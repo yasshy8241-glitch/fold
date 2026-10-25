@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foldable & Smartphone Visual Comparator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .device-transition {
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* カメラ干渉時のパルスアニメーション */
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+    .cutout-intruding {
+      animation: pulse-red 1.8s infinite;
+    }
+    /* UDC（画面下カメラ）のメッシュ表現 */
+    .udc-pattern {
+      background-image: radial-gradient(#38bdf8 1px, transparent 1px);
+      background-size: 3px 3px;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <!-- ヘッダー -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-1 rounded-md bg-indigo-600 text-xs font-bold tracking-wider uppercase">PROTOTYPE</span>
+        <h1 class="text-lg md:text-xl font-bold text-white">折りたたみ＆通常スマホ 徹底比較シミュレーター</h1>
+      </div>
+      <!-- スケール（表示倍率）スライダー -->
+      <div class="flex items-center gap-3 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
+        <span class="text-slate-300 font-medium">表示スケール:</span>
+        <input id="scaleSlider" type="range" min="1.2" max="3.5" step="0.1" value="2.1" class="w-24 accent-indigo-500 cursor-pointer" />
+        <span id="scaleValue" class="text-indigo-400 font-mono w-14 text-right">2.1 px/mm</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pt-5 space-y-6">
+
+    <!-- 1. モード切替タブ（4モード） -->
+    <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">STEP 1: 比較モードを選択</div>
+      <div id="modeTabs" class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <!-- JSで描画 -->
+      </div>
+
+      <!-- 端末セレクター -->
+      <div class="mt-4 pt-4 border-t border-slate-800">
+        <div id="deviceSelectorArea" class="space-y-3">
+          <!-- JSで描画 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 一括コントロール＆コンテンツ・表示設定バー -->
+    <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- 一括：開閉＆4方向回転 -->
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-slate-400 block">一括：開閉 ＆ 4方向回転</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button id="btnBatchOpen" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white transition">すべて開く</button>
+            <button id="btnBatchClose" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition">すべて閉じる</button>
+          </div>
+          <div class="flex gap-1 pt-1" id="batchRotationBtns">
+            <button data-rot="0" class="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono border border-slate-700">0°</button>
+            <button data-rot="90" class="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono border border-slate-700">90°</button>
+            <button data-rot="180" class="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono border border-slate-700">180°</button>
+            <button data-rot="270" class="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono border border-slate-700">270°</button>
+          </div>
+        </div>
+
+        <!-- コンテンツ比率（実表示面積＆黒帯計算） -->
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-slate-400 block">表示コンテンツ（黒帯・面積計算）</label>
+          <select id="contentSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <option value="video_16_9">16:9 動画（YouTube・アニメ 横）</option>
+            <option value="manga_spread">√2:1 見開きマンガ（単行本2ページ横）</option>
+            <option value="cinema_21_9">21:9 映画（シネマスコープ 横）</option>
+            <option value="manga_single">1:√2 単ページマンガ（1ページ縦読み）</option>
+            <option value="tablet_4_3">4:3 写真・タブレット比率（横）</option>
+            <option value="fullscreen">全画面表示（ゲーム・ブラウザ）</option>
+          </select>
+          <p id="contentDesc" class="text-[11px] text-slate-400">上下または左右の黒帯とパンチホール干渉を自動計算します。</p>
+        </div>
+
+        <!-- レイアウト表示方式（横並び / 重ね合わせ） -->
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-slate-400 block">比較レイアウト方式</label>
+          <div class="grid grid-cols-1 gap-1.5" id="layoutBtns">
+            <button data-layout="side" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-medium text-left flex items-center justify-between">
+              <span>横並び（サイドバイサイド）</span><span>●</span>
+            </button>
+            <button data-layout="overlay_bl" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 border border-slate-700 text-left flex items-center justify-between">
+              <span>重ね合わせ（左下揃え：親指リーチ基準）</span><span></span>
+            </button>
+            <button data-layout="overlay_center" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 border border-slate-700 text-left flex items-center justify-between">
+              <span>重ね合わせ（中央揃え：面積・比率基準）</span><span></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- パンチホール・カメラ表示設定 -->
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-slate-400 block">カメラ穴（パンチホール）検証オプション</label>
+          <label class="flex items-center gap-2 text-xs text-slate-200 cursor-pointer bg-slate-800/70 p-2 rounded-lg border border-slate-700">
+            <input id="toggleCutoutVis" type="checkbox" checked class="accent-indigo-500 w-4 h-4" />
+            <span>カメラ穴と干渉警告リングを表示</span>
+          </label>
+          <label class="flex items-center gap-2 text-xs text-slate-200 cursor-pointer bg-slate-800/70 p-2 rounded-lg border border-slate-700">
+            <input id="toggleFoldUdc" type="checkbox" checked class="accent-indigo-500 w-4 h-4" />
+            <span>Galaxy Z Fold8内側をUDC（画面下カメラ）として判定</span>
+          </label>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 凡例バー -->
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-slate-900/60 border border-slate-800 rounded-lg text-xs">
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="font-semibold text-slate-400">カメラ干渉ステータス凡例:</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span><span class="text-emerald-300">SAFE（黒帯内に隠れて非干渉）</span></span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-cyan-400 inline-block"></span><span class="text-cyan-300">PERFECT（ベゼル内蔵・切り欠きなし）</span></span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span><span class="text-amber-300">UDC（画面下カメラ・半透過重なり）</span></span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span><span class="text-rose-300">NG（コンテンツ表示領域に干渉）</span></span>
+      </div>
+    </div>
+
+    <!-- 3. メイン比較キャンバス -->
+    <section id="canvasSection" class="bg-slate-950 border border-slate-800 rounded-2xl p-6 min-h-[420px] overflow-x-auto">
+      <div id="comparisonCanvas" class="flex flex-wrap items-end justify-center gap-8 min-w-max mx-auto">
+        <!-- JSで端末カードまたはオーバーレイキャンバスを描画 -->
+      </div>
+    </section>
+
+    <!-- 4. 実表示面積ランキング ＆ 厚み・重量・スペック比較テーブル -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- 実表示面積＆実効インチ比較グラフ -->
+      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+        <h2 class="text-sm font-bold text-white mb-1 flex items-center justify-between">
+          <span>実表示面積 ＆ 実効インチ数比較</span>
+          <span id="chartContentBadge" class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">16:9 動画</span>
+        </h2>
+        <p class="text-xs text-slate-400 mb-4">薄いバーが「画面総面積」、色付きバーが「黒帯を除いた実際のコンテンツ表示面積」です。</p>
+        <div id="areaChartContainer" class="space-y-3.5">
+          <!-- JSで描画 -->
+        </div>
+      </div>
+
+      <!-- 詳細スペック・厚み・重量・干渉判定テーブル -->
+      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg overflow-x-auto">
+        <h2 class="text-sm font-bold text-white mb-1">選択中の端末 スペック・厚み・カメラ干渉一覧</h2>
+        <p class="text-xs text-slate-400 mb-4">最軽量端末との重量差（単3電池 約23g / 100円玉 約4.8g換算）と側面厚みの比較です。</p>
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400">
+              <th class="py-2 pr-3">機種名 / 状態</th>
+              <th class="py-2 px-2">外寸 (幅×高×厚)</th>
+              <th class="py-2 px-2">実効サイズ (黒帯率)</th>
+              <th class="py-2 px-2">カメラ干渉判定</th>
+              <th class="py-2 pl-2">重量 (最軽比)</th>
+            </tr>
+          </thead>
+          <tbody id="specTableBody" class="divide-y divide-slate-800/70">
+            <!-- JSで描画 -->
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    /********************************************************************
+     * 1. 全8機種のマスターデータ定義（ヒンジ縦・0°基準に正規化済み）
+     ********************************************************************/
+    const DEVICES = [
+      {
+        id: 'zfold8',
+        name: 'Galaxy Z Fold8',
+        category: 'foldable',
+        color: '#6366f1', // Indigo
+        weightG: 201,
+        closed: {
+          bodyW: 81.9, bodyH: 123.9, bodyD: 9.7,
+          inch: 5.5, resW: 1248, resH: 1972,
+          cutout: { type: 'punch_hole', rx: 0.50, offsetTopMm: 4.5, wMm: 3.8, hMm: 3.8, label: 'パンチホール (中央上)' }
+        },
+        open: {
+          bodyW: 161.4, bodyH: 123.9, bodyD: 4.5,
+          inch: 7.6, resW: 2448, resH: 1848,
+          cutout: { type: 'udc', rx: 0.75, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'UDC 画面下カメラ (右半分上)' }
+        }
+      },
+      {
+        id: 'zfold8u',
+        name: 'Galaxy Z Fold8 Ultra',
+        category: 'foldable',
+        color: '#8b5cf6', // Violet
+        weightG: 215,
+        closed: {
+          bodyW: 73.0, bodyH: 158.0, bodyD: 8.9,
+          inch: 6.5, resW: 1080, resH: 2520,
+          cutout: { type: 'punch_hole', rx: 0.50, offsetTopMm: 4.5, wMm: 3.8, hMm: 3.8, label: 'パンチホール (中央上)' }
+        },
+        open: {
+          bodyW: 143.0, bodyH: 158.0, bodyD: 4.1,
+          inch: 8.0, resW: 2256, resH: 2504,
+          cutout: { type: 'udc', rx: 0.75, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'UDC 画面下カメラ (右半分上)' }
+        }
+      },
+      {
+        id: 'iphoneduo',
+        name: 'iPhone Duo',
+        category: 'foldable',
+        color: '#ec4899', // Pink
+        weightG: 254,
+        closed: {
+          bodyW: 84.1, bodyH: 117.8, bodyD: 11.3,
+          inch: 5.36, resW: null, resH: null,
+          cutout: { type: 'pill', rx: 0.50, offsetTopMm: 5.2, wMm: 10.5, hMm: 3.6, label: 'Dynamic Island (中央上)' }
+        },
+        open: {
+          bodyW: 164.6, bodyH: 117.8, bodyD: 5.2,
+          inch: 7.58, resW: null, resH: null,
+          cutout: { type: 'punch_hole', rx: 0.78, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'パンチホール (右上寄り)' }
+        }
+      },
+      {
+        id: 'pixel11pf',
+        name: 'Pixel 11 Pro Fold',
+        category: 'foldable',
+        color: '#10b981', // Emerald
+        weightG: 239,
+        closed: {
+          bodyW: 76.0, bodyH: 155.2, bodyD: 10.1,
+          inch: 6.5, resW: 1080, resH: 2342,
+          cutout: { type: 'punch_hole', rx: 0.50, offsetTopMm: 4.8, wMm: 4.0, hMm: 4.0, label: 'パンチホール (中央上)' }
+        },
+        open: {
+          bodyW: 150.4, bodyH: 155.2, bodyD: 5.0,
+          inch: 8.0, resW: 2076, resH: 2152,
+          cutout: { type: 'punch_hole', rx: 0.90, offsetTopMm: 5.0, wMm: 4.0, hMm: 4.0, label: 'パンチホール (右上コーナー)' }
+        }
+      },
+      {
+        id: 'pixelfold',
+        name: 'Pixel Fold (初代)',
+        category: 'foldable',
+        color: '#14b8a6', // Teal
+        weightG: 283,
+        closed: {
+          bodyW: 79.5, bodyH: 139.7, bodyD: 12.1,
+          inch: 5.8, resW: 1080, resH: 2092,
+          cutout: { type: 'punch_hole', rx: 0.50, offsetTopMm: 4.8, wMm: 4.0, hMm: 4.0, label: 'パンチホール (中央上)' }
+        },
+        open: {
+          bodyW: 158.7, bodyH: 139.7, bodyD: 5.8,
+          inch: 7.6, resW: 2208, resH: 1840,
+          cutout: { type: 'bezel', rx: 0.75, offsetTopMm: -2.0, wMm: 3.5, hMm: 3.5, label: 'ベゼル内蔵 (画面切り欠きなし)' }
+        }
+      },
+      {
+        id: 'iphone18p',
+        name: 'iPhone 18 Pro',
+        category: 'bar',
+        color: '#f59e0b', // Amber
+        weightG: 211,
+        closed: {
+          bodyW: 71.9, bodyH: 150.0, bodyD: 8.75,
+          inch: 6.27, resW: 1206, resH: 2622,
+          cutout: { type: 'pill', rx: 0.50, offsetTopMm: 5.5, wMm: 11.0, hMm: 3.8, label: 'Dynamic Island' }
+        }
+      },
+      {
+        id: 'iphone18pm',
+        name: 'iPhone 18 Pro Max',
+        category: 'bar',
+        color: '#f97316', // Orange
+        weightG: 249,
+        closed: {
+          bodyW: 78.0, bodyH: 163.4, bodyD: 8.75,
+          inch: 6.86, resW: 1320, resH: 2868,
+          cutout: { type: 'pill', rx: 0.50, offsetTopMm: 5.5, wMm: 11.0, hMm: 3.8, label: 'Dynamic Island' }
+        }
+      },
+      {
+        id: 'pixel11p',
+        name: 'Pixel 11 Pro',
+        category: 'bar',
+        color: '#38bdf8', // Sky
+        weightG: 204,
+        closed: {
+          bodyW: 71.9, bodyH: 152.7, bodyD: 8.4,
+          inch: 6.3, resW: 1280, resH: 2856,
+          cutout: { type: 'punch_hole', rx: 0.50, offsetTopMm: 4.8, wMm: 4.0, hMm: 4.0, label: 'パンチホール (中央上)' }
+        }
+      }
+    ];
+
+    const MODES = [
+      { id: 'single', title: '① シングルモード', desc: '折りたたみ1台を開閉・回転して検証' },
+      { id: 'vs_bar', title: '② 通常スマホと比較', desc: '通常スマホ1台 ＋ 折りたたみ1台' },
+      { id: 'multi_fold', title: '③ マルチモード', desc: '複数の折りたたみスマホを同時比較' },
+      { id: 'multi_all', title: '④ 通常＋マルチ比較', desc: '複数の通常スマホ ＋ 複数の折りたたみ' }
+    ];
+
+    const CONTENT_PRESETS = {
+      video_16_9:   { label: '16:9 動画', aspect: 16 / 9, desc: 'YouTubeや一般的な動画（横長 1.78:1）' },
+      manga_spread: { label: '見開きマンガ (√2:1)', aspect: Math.SQRT2, desc: '単行本2ページ見開き（横長 1.414:1）' },
+      cinema_21_9:  { label: '21:9 映画', aspect: 21 / 9, desc: 'シネマスコープ映画（超横長 2.33:1）' },
+      manga_single: { label: '単ページマンガ (1:√2)', aspect: 1 / Math.SQRT2, desc: 'マンガ1ページ縦読み（縦長 0.707:1）' },
+      tablet_4_3:   { label: '4:3 タブレット・写真', aspect: 4 / 3, desc: 'iPad標準比率・写真（横長 1.33:1）' },
+      fullscreen:   { label: '全画面表示', aspect: null, desc: '画面全体を使うゲームやブラウザ（黒帯0%）' }
+    };
+
+    /********************************************************************
+     * 2. アプリケーション状態（State）
+     ********************************************************************/
+    const state = {
+      mode: 'vs_bar', // 初期表示は「通常スマホとの比較モード」
+      scalePxPerMm: 2.1,
+      layout: 'side', // 'side' | 'overlay_bl' | 'overlay_center'
+      contentKey: 'video_16_9',
+      showCutout: true,
+      useUdcForFold8: true,
+      // モード別の選択状態
+      singleFoldId: 'zfold8',
+      vsBarId: 'iphone18pm',
+      vsFoldId: 'zfold8',
+      multiFoldIds: ['zfold8', 'zfold8u', 'iphoneduo', 'pixel11pf'],
+      multiAllIds: ['zfold8', 'iphoneduo', 'pixel11pf', 'iphone18pm', 'pixel11p'],
+      // 各端末ごとの個別状態（開閉・回転角）
+      deviceStates: {}
+    };
+
+    // 初期状態の設定（折りたたみは展開・0°、通常スマホは0°）
+    DEVICES.forEach(d => {
+      state.deviceStates[d.id] = {
+        isOpen: d.category === 'foldable',
+        rotation: 0 // 0 | 90 | 180 | 270
+      };
+    });
+
+    /********************************************************************
+     * 3. 幾何計算エンジン（実表示面積・黒帯・パンチホール干渉判定）
+     ********************************************************************/
+    function computeDeviceMetrics(device, isOpen, rotation, contentKey) {
+      const activeOpen = device.category === 'foldable' && isOpen;
+      const spec = activeOpen ? device.open : device.closed;
+      const diagMm = spec.inch * 25.4;
+
+      // 0°基準での画面アスペクト比推定（解像度があれば解像度、なければ外寸からベゼル7.2mmを引く）
+      const rawRatioW = spec.resW ? spec.resW : Math.max(10, spec.bodyW - 7.2);
+      const rawRatioH = spec.resH ? spec.resH : Math.max(10, spec.bodyH - 7.2);
+      const diagRatio = Math.hypot(rawRatioW, rawRatioH);
+
+      const baseScreenW = diagMm * (rawRatioW / diagRatio);
+      const baseScreenH = diagMm * (rawRatioH / diagRatio);
+
+      // 回転変換（90°または270°の場合は縦横が入れ替わる）
+      const isSwapped = rotation === 90 || rotation === 270;
+      const bodyW = isSwapped ? spec.bodyH : spec.bodyW;
+      const bodyH = isSwapped ? spec.bodyW : spec.bodyH;
+      const screenW = isSwapped ? baseScreenH : baseScreenW;
+      const screenH = isSwapped ? baseScreenW : baseScreenH;
+      const screenAreaCm2 = (screenW * screenH) / 100;
+      const screenAspect = screenW / screenH;
+
+      // コンテンツ内接（Contain）計算
+      const preset = CONTENT_PRESETS[contentKey];
+      const targetAspect = preset.aspect;
+      let contentW = screenW;
+      let contentH = screenH;
+      let barType = 'exact';
+
+      if (targetAspect !== null) {
+        if (Math.abs(screenAspect - targetAspect) < 0.005) {
+          barType = 'exact';
+        } else if (targetAspect > screenAspect) {
+          contentW = screenW;
+          contentH = screenW / targetAspect;
+          barType = 'letterbox'; // 上下黒帯
+        } else {
+          contentH = screenH;
+          contentW = screenH * targetAspect;
+          barType = 'pillarbox'; // 左右黒帯
+        }
+      }
+
+      const contentAreaCm2 = (contentW * contentH) / 100;
+      const effectiveInch = Math.hypot(contentW, contentH) / 25.4;
+      const activeRatioPercent = (contentAreaCm2 / screenAreaCm2) * 100;
+      const blackBarRatioPercent = Math.max(0, 100 - activeRatioPercent);
+
+      // パンチホール（カメラ穴）の回転座標変換と干渉判定
+      const cutoutSpec = spec.cutout;
+      let effectiveCutoutType = cutoutSpec.type;
+      if (effectiveCutoutType === 'udc' && !state.useUdcForFold8) {
+        effectiveCutoutType = 'punch_hole';
+      }
+
+      const interference = evaluateCutoutAtRotation(
+        baseScreenW,
+        baseScreenH,
+        contentW,
+        contentH,
+        cutoutSpec,
+        effectiveCutoutType,
+        rotation
+      );
+
+      // もし干渉している場合、他の回転角(0, 90, 180, 270)で黒帯に隠せるか探索
+      let suggestedAngle = null;
+      if (interference.status === 'intruding' || interference.status === 'udc_overlap') {
+        for (const candRot of [0, 90, 180, 270]) {
+          if (candRot === rotation) continue;
+          const candSwap = candRot === 90 || candRot === 270;
+          const cScreenW = candSwap ? baseScreenH : baseScreenW;
+          const cScreenH = candSwap ? baseScreenW : baseScreenH;
+          let cContW = cScreenW;
+          let cContH = cScreenH;
+          if (targetAspect !== null) {
+            if (targetAspect > cScreenW / cScreenH) {
+              cContH = cScreenW / targetAspect;
+            } else {
+              cContW = cScreenH * targetAspect;
+            }
+          }
+          // 面積が現在と同等以上で、かつ黒帯に隠れる向きがあれば提案
+          const candEval = evaluateCutoutAtRotation(
+            baseScreenW, baseScreenH, cContW, cContH, cutoutSpec, effectiveCutoutType, candRot
+          );
+          if (candEval.status === 'safe_in_blackbar' && (cContW * cContH) >= (contentW * contentH) * 0.98) {
+            suggestedAngle = candRot;
+            break;
+          }
+        }
+      }
+
+      return {
+        activeOpen,
+        rotation,
+        bodyW,
+        bodyH,
+        bodyD: spec.bodyD,
+        nominalInch: spec.inch,
+        screenW,
+        screenH,
+        screenAreaCm2,
+        contentW,
+        contentH,
+        contentAreaCm2,
+        effectiveInch,
+        activeRatioPercent,
+        blackBarRatioPercent,
+        barType,
+        cutout: interference,
+        cutoutLabel: cutoutSpec.label,
+        suggestedAngle
+      };
+    }
+
+    function evaluateCutoutAtRotation(baseW, baseH, contentW, contentH, cutout, effectiveType, rotation) {
+      if (effectiveType === 'bezel') {
+        return {
+          status: 'safe_bezel',
+          type: 'bezel',
+          hx: 0, hy: 0, hw: 0, hh: 0,
+          overlapAreaMm2: 0,
+          clearanceMm: 999
+        };
+      }
+
+      const x0 = baseW * cutout.rx;
+      const y0 = cutout.offsetTopMm;
+      let screenW = baseW;
+      let screenH = baseH;
+      let hx = x0, hy = y0, hw = cutout.wMm, hh = cutout.hMm;
+
+      if (rotation === 90) {
+        screenW = baseH; screenH = baseW;
+        hx = baseH - y0; hy = x0;
+        hw = cutout.hMm; hh = cutout.wMm;
+      } else if (rotation === 180) {
+        hx = baseW - x0; hy = baseH - y0;
+      } else if (rotation === 270) {
+        screenW = baseH; screenH = baseW;
+        hx = y0; hy = baseW - x0;
+        hw = cutout.hMm; hh = cutout.wMm;
+      }
+
+      const cLeft = (screenW - contentW) / 2;
+      const cRight = cLeft + contentW;
+      const cTop = (screenH - contentH) / 2;
+      const cBottom = cTop + contentH;
+
+      const hLeft = hx - hw / 2;
+      const hRight = hx + hw / 2;
+      const hTop = hy - hh / 2;
+      const hBottom = hy + hh / 2;
+
+      const overlapW = Math.max(0, Math.min(cRight, hRight) - Math.max(cLeft, hLeft));
+      const overlapH = Math.max(0, Math.min(cBottom, hBottom) - Math.max(cTop, hTop));
+      const overlapAreaMm2 = overlapW * overlapH;
+
+      const dx = Math.max(cLeft - hRight, hLeft - cRight);
+      const dy = Math.max(cTop - hBottom, hTop - cBottom);
+      const clearanceMm = Math.max(dx, dy);
+
+      let status = 'safe_in_blackbar';
+      if (overlapAreaMm2 > 0.01) {
+        status = effectiveType === 'udc' ? 'udc_overlap' : 'intruding';
+      }
+
+      return {
+        status,
+        type: effectiveType,
+        hx, hy, hw, hh,
+        overlapAreaMm2,
+        clearanceMm
+      };
+    }
+
+    /********************************************************************
+     * 4. 現在アクティブな端末リストの取得
+     ********************************************************************/
+    function getActiveDevices() {
+      if (state.mode === 'single') {
+        return DEVICES.filter(d => d.id === state.singleFoldId);
+      } else if (state.mode === 'vs_bar') {
+        return DEVICES.filter(d => d.id === state.vsFoldId || d.id === state.vsBarId);
+      } else if (state.mode === 'multi_fold') {
+        return DEVICES.filter(d => d.category === 'foldable' && state.multiFoldIds.includes(d.id));
+      } else {
+        return DEVICES.filter(d => state.multiAllIds.includes(d.id));
+      }
+    }
+
+    /********************************************************************
+     * 5. UIレンダリング関数群
+     ********************************************************************/
+    function renderModeTabs() {
+      const container = document.getElementById('modeTabs');
+      container.innerHTML = MODES.map(m => {
+        const active = state.mode === m.id;
+        return `
+          <button data-mode="${m.id}" class="p-3 rounded-xl border text-left transition ${
+            active
+              ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-inner'
+              : 'bg-slate-800/60 border-slate-700/80 text-slate-300 hover:bg-slate-800'
+          }">
+            <div class="text-xs font-bold flex items-center justify-between">
+              <span>${m.title}</span>
+              ${active ? '<span class="w-2 h-2 rounded-full bg-indigo-400"></span>' : ''}
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1">${m.desc}</div>
+          </button>
+        `;
+      }).join('');
+
+      container.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.mode = btn.dataset.mode;
+          renderAll();
+        });
+      });
+    }
+
+    function renderDeviceSelectors() {
+      const container = document.getElementById('deviceSelectorArea');
+      const foldables = DEVICES.filter(d => d.category === 'foldable');
+      const bars = DEVICES.filter(d => d.category === 'bar');
+
+      if (state.mode === 'single') {
+        container.innerHTML = `
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 mr-2">折りたたみスマホを選択:</span>
+            ${foldables.map(d => `
+              <button data-pick-single="${d.id}" class="px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                state.singleFoldId === d.id
+                  ? 'bg-indigo-600 border-indigo-400 text-white'
+                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+              }">${d.name}</button>
+            `).join('')}
+          </div>
+        `;
+        container.querySelectorAll('[data-pick-single]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.singleFoldId = btn.dataset.pickSingle;
+            renderAll();
+          });
+        });
+      } else if (state.mode === 'vs_bar') {
+        container.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs text-indigo-300 font-semibold mr-1">折りたたみ(1台):</span>
+              ${foldables.map(d => `
+                <button data-pick-vsfold="${d.id}" class="px-2.5 py-1 rounded-lg text-xs border transition ${
+                  state.vsFoldId === d.id
+                    ? 'bg-indigo-600 border-indigo-400 text-white font-semibold'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                }">${d.name}</button>
+              `).join('')}
+            </div>
+            <span class="hidden sm:inline text-slate-600">×</span>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs text-amber-300 font-semibold mr-1">通常スマホ(1台):</span>
+              ${bars.map(d => `
+                <button data-pick-vsbar="${d.id}" class="px-2.5 py-1 rounded-lg text-xs border transition ${
+                  state.vsBarId === d.id
+                    ? 'bg-amber-600 border-amber-400 text-white font-semibold'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                }">${d.name}</button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        container.querySelectorAll('[data-pick-vsfold]').forEach(btn => {
+          btn.addEventListener('click', () => { state.vsFoldId = btn.dataset.pickVsfold; renderAll(); });
+        });
+        container.querySelectorAll('[data-pick-vsbar]').forEach(btn => {
+          btn.addEventListener('click', () => { state.vsBarId = btn.dataset.pickVsbar; renderAll(); });
+        });
+      } else if (state.mode === 'multi_fold') {
+        container.innerHTML = `
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 mr-1">比較する折りたたみスマホ（複数選択可）:</span>
+            ${foldables.map(d => {
+              const checked = state.multiFoldIds.includes(d.id);
+              return `
+                <button data-toggle-mfold="${d.id}" class="px-3 py-1.5 rounded-lg text-xs border transition flex items-center gap-1.5 ${
+                  checked
+                    ? 'bg-indigo-600/30 border-indigo-400 text-white font-medium'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                }">
+                  <span class="w-2.5 h-2.5 rounded-sm" style="background:${checked ? d.color : '#475569'}"></span>
+                  <span>${d.name}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `;
+        container.querySelectorAll('[data-toggle-mfold]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.toggleMfold;
+            if (state.multiFoldIds.includes(id)) {
+              if (state.multiFoldIds.length > 1) state.multiFoldIds = state.multiFoldIds.filter(x => x !== id);
+            } else {
+              state.multiFoldIds.push(id);
+            }
+            renderAll();
+          });
+        });
+      } else {
+        container.innerHTML = `
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs text-indigo-300 font-semibold mr-1">折りたたみ（複数可）:</span>
+              ${foldables.map(d => {
+                const checked = state.multiAllIds.includes(d.id);
+                return `
+                  <button data-toggle-mall="${d.id}" class="px-2.5 py-1 rounded-lg text-xs border transition flex items-center gap-1.5 ${
+                    checked ? 'bg-indigo-600/30 border-indigo-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }">
+                    <span class="w-2 h-2 rounded-full" style="background:${d.color}"></span>
+                    <span>${d.name}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs text-amber-300 font-semibold mr-1">通常スマホ（複数可）:</span>
+              ${bars.map(d => {
+                const checked = state.multiAllIds.includes(d.id);
+                return `
+                  <button data-toggle-mall="${d.id}" class="px-2.5 py-1 rounded-lg text-xs border transition flex items-center gap-1.5 ${
+                    checked ? 'bg-amber-600/30 border-amber-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }">
+                    <span class="w-2 h-2 rounded-full" style="background:${d.color}"></span>
+                    <span>${d.name}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+        container.querySelectorAll('[data-toggle-mall]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.toggleMall;
+            if (state.multiAllIds.includes(id)) {
+              if (state.multiAllIds.length > 1) state.multiAllIds = state.multiAllIds.filter(x => x !== id);
+            } else {
+              state.multiAllIds.push(id);
+            }
+            renderAll();
+          });
+        });
+      }
+    }
+
+    /********************************************************************
+     * 6. メインキャンバス描画（横並び ＆ 重ね合わせオーバーレイ）
+     ********************************************************************/
+    function renderCanvas(activeListWithMetrics) {
+      const container = document.getElementById('comparisonCanvas');
+      const scale = state.scalePxPerMm;
+
+      if (state.layout === 'side') {
+        container.innerHTML = activeListWithMetrics.map(({ device, metrics }) => {
+          return buildSideBySideCardHTML(device, metrics, scale);
+        }).join('');
+      } else {
+        container.innerHTML = buildOverlayCanvasHTML(activeListWithMetrics, scale, state.layout);
+      }
+
+      // 個別操作イベントのバインド
+      container.querySelectorAll('[data-toggle-open]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.toggleOpen;
+          state.deviceStates[id].isOpen = !state.deviceStates[id].isOpen;
+          renderAll();
+        });
+      });
+
+      container.querySelectorAll('[data-set-rot]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.deviceId;
+          const rot = parseInt(btn.dataset.setRot, 10);
+          state.deviceStates[id].rotation = rot;
+          renderAll();
+        });
+      });
+    }
+
+    function getCutoutBadgeInfo(cutout) {
+      if (cutout.status === 'safe_bezel') {
+        return { label: 'PERFECT (ベゼル内蔵)', badgeCls: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40', ringCls: 'border-cyan-400 bg-cyan-400/20' };
+      } else if (cutout.status === 'safe_in_blackbar') {
+        return { label: `SAFE (黒帯内 +${cutout.clearanceMm.toFixed(1)}mm)`, badgeCls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', ringCls: 'border-emerald-400 bg-emerald-500/30' };
+      } else if (cutout.status === 'udc_overlap') {
+        return { label: 'UDC透過 (画素重なり)', badgeCls: 'bg-amber-500/20 text-amber-300 border-amber-500/40', ringCls: 'border-amber-400 udc-pattern' };
+      } else {
+        return { label: `NG 干渉 (${cutout.overlapAreaMm2.toFixed(1)}mm²被り)`, badgeCls: 'bg-rose-500/20 text-rose-300 border-rose-500/50', ringCls: 'border-rose-500 bg-rose-600/80 cutout-intruding' };
+      }
+    }
+
+    function buildSideBySideCardHTML(device, m, scale) {
+      const bodyWpx = m.bodyW * scale;
+      const bodyHpx = m.bodyH * scale;
+      const screenWpx = m.screenW * scale;
+      const screenHpx = m.screenH * scale;
+      const contentWpx = m.contentW * scale;
+      const contentHpx = m.contentH * scale;
+
+      const cBadge = getCutoutBadgeInfo(m.cutout);
+
+      // カメラ穴の描画HTML
+      let cutoutHTML = '';
+      if (state.showCutout && m.cutout.type !== 'bezel') {
+        const holeWpx = Math.max(6, m.cutout.hw * scale);
+        const holeHpx = Math.max(6, m.cutout.hh * scale);
+        const leftPx = m.cutout.hx * scale - holeWpx / 2;
+        const topPx = m.cutout.hy * scale - holeHpx / 2;
+        cutoutHTML = `
+          <div class="device-transition absolute z-20 rounded-full border-2 ${cBadge.ringCls}"
+               style="width:${holeWpx}px; height:${holeHpx}px; left:${leftPx}px; top:${topPx}px;"
+               title="${m.cutoutLabel}">
+          </div>
+        `;
+      }
+
+      // ヒンジ（中央折り目）の描画HTML
+      let hingeHTML = '';
+      if (m.activeOpen) {
+        const isHorizontalHinge = m.rotation === 90 || m.rotation === 270;
+        if (isHorizontalHinge) {
+          hingeHTML = `<div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-white/15 pointer-events-none z-10 border-t border-dashed border-white/25"></div>`;
+        } else {
+          hingeHTML = `<div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-white/15 pointer-events-none z-10 border-l border-dashed border-white/25"></div>`;
+        }
+      }
+
+      // 見開きマンガ選択時のページ境界＆コマ枠ガイド
+      let contentGuideHTML = '';
+      if (state.contentKey === 'manga_spread') {
+        contentGuideHTML = `
+          <div class="absolute inset-0 flex pointer-events-none">
+            <div class="flex-1 border-r border-slate-900/40 m-1.5 border border-dashed border-white/30 rounded-sm flex items-center justify-center text-[10px] text-white/60">左ページ</div>
+            <div class="flex-1 m-1.5 border border-dashed border-white/30 rounded-sm flex items-center justify-center text-[10px] text-white/60">右ページ</div>
+          </div>
+        `;
+      }
+
+      // 回転サジェストボタン
+      let suggestionHTML = '';
+      if (m.suggestedAngle !== null) {
+        suggestionHTML = `
+          <button data-device-id="${device.id}" data-set-rot="${m.suggestedAngle}"
+                  class="mt-2 w-full py-1 px-2 rounded bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-[11px] font-medium transition flex items-center justify-center gap-1">
+            <span>💡 ${m.suggestedAngle}° に回すと黒帯に隠れて干渉ゼロ</span>
+          </button>
+        `;
+      }
+
+      return `
+        <div class="flex flex-col items-center bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl min-w-[240px]">
+
+          <!-- カード上部：機種名＆個別コントロール -->
+          <div class="w-full flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full shrink-0" style="background:${device.color}"></span>
+              <span class="font-bold text-sm text-white">${device.name}</span>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400">${device.weightG}g</span>
+          </div>
+
+          <!-- 個別：開閉＆4方向回転ボタン -->
+          <div class="w-full flex flex-wrap items-center justify-between gap-1.5 mb-3 pb-2.5 border-b border-slate-800 text-xs">
+            ${device.category === 'foldable' ? `
+              <button data-toggle-open="${device.id}" class="px-2.5 py-1 rounded font-medium transition ${
+                m.activeOpen ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'
+              }">
+                ${m.activeOpen ? '展開中 (開)' : '折りたたみ (閉)'}
+              </button>
+            ` : `<span class="px-2 py-1 rounded bg-slate-800/60 text-slate-400 text-[11px]">通常バー型</span>`}
+
+            <div class="flex items-center gap-1">
+              ${[0, 90, 180, 270].map(rot => `
+                <button data-device-id="${device.id}" data-set-rot="${rot}"
+                        class="px-1.5 py-0.5 rounded font-mono text-[11px] border transition ${
+                          m.rotation === rot
+                            ? 'bg-slate-200 text-slate-900 border-white font-bold'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                        }">${rot}°</button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- 2D実寸スケール端末シルエット -->
+          <div class="my-2 flex items-center justify-center">
+            <!-- 本体外枠 (Chassis) -->
+            <div class="device-transition relative rounded-[18px] bg-slate-800 border-2 shadow-2xl flex items-center justify-center"
+                 style="width:${bodyWpx}px; height:${bodyHpx}px; border-color:${device.color};">
+
+              <!-- ディスプレイ領域 (黒帯背景) -->
+              <div class="device-transition relative bg-black rounded-[12px] overflow-hidden flex items-center justify-center border border-slate-700/60"
+                   style="width:${screenWpx}px; height:${screenHpx}px;">
+
+                ${hingeHTML}
+                ${cutoutHTML}
+
+                <!-- 実表示コンテンツ領域 (内接枠) -->
+                <div class="device-transition relative flex flex-col items-center justify-center text-center overflow-hidden select-none"
+                     style="width:${contentWpx}px; height:${contentHpx}px; background: linear-gradient(135deg, ${device.color}44, ${device.color}88); border: 1.5px solid ${device.color};">
+                  ${contentGuideHTML}
+                  <div class="z-10 px-1 py-0.5 rounded bg-slate-950/75 backdrop-blur-sm">
+                    <div class="text-xs font-extrabold text-white leading-tight">実効 ${m.effectiveInch.toFixed(2)}"</div>
+                    <div class="text-[10px] font-mono text-slate-200">${m.contentAreaCm2.toFixed(1)} cm²</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- 側面厚みバー (Side Profile) -->
+          <div class="w-full mt-3 pt-2.5 border-t border-slate-800/80 space-y-1.5 text-[11px]">
+            <div class="flex items-center justify-between text-slate-300">
+              <span>外寸: <strong class="font-mono text-white">${m.bodyW.toFixed(1)} × ${m.bodyH.toFixed(1)} mm</strong></span>
+              <span>厚み: <strong class="font-mono text-indigo-300">${m.bodyD} mm</strong></span>
+            </div>
+            <!-- 厚み視覚バー -->
+            <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800 flex items-center">
+              <div class="h-full rounded-full transition-all" style="width:${Math.min(100, (m.bodyD / 14) * 100)}%; background:${device.color}"></div>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-slate-400">黒帯率: <strong class="text-slate-200 font-mono">${m.blackBarRatioPercent.toFixed(1)}%</strong></span>
+              <span class="px-2 py-0.5 rounded border text-[10px] font-semibold ${cBadge.badgeCls}">${cBadge.label}</span>
+            </div>
+            ${suggestionHTML}
+          </div>
+
+        </div>
+      `;
+    }
+
+    function buildOverlayCanvasHTML(activeListWithMetrics, scale, layoutMode) {
+      // 最大幅・最大高さを求めてコンテナサイズを決定
+      const maxW = Math.max(...activeListWithMetrics.map(x => x.metrics.bodyW * scale)) + 40;
+      const maxH = Math.max(...activeListWithMetrics.map(x => x.metrics.bodyH * scale)) + 40;
+
+      // 面積が大きい順に奥（下層）に描画すると重なりが見やすい
+      const sorted = [...activeListWithMetrics].sort(
+        (a, b) => (b.metrics.bodyW * b.metrics.bodyH) - (a.metrics.bodyW * a.metrics.bodyH)
+      );
+
+      const alignClass = layoutMode === 'overlay_bl'
+        ? 'items-end justify-start'
+        : 'items-center justify-center';
+
+      const layersHTML = sorted.map(({ device, metrics: m }, idx) => {
+        const wPx = m.bodyW * scale;
+        const hPx = m.bodyH * scale;
+        const posStyle = layoutMode === 'overlay_bl'
+          ? `left: 20px; bottom: 20px;`
+          : `left: 50%; top: 50%; transform: translate(-50%, -50%);`;
+
+        return `
+          <div class="device-transition absolute rounded-[16px] border-2 flex items-start justify-start p-2 transition-all"
+               style="width:${wPx}px; height:${hPx}px; ${posStyle} border-color:${device.color}; background-color:${device.color}22; z-index:${10 + idx};">
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold text-white shadow" style="background:${device.color}">
+              ${device.name} (${m.bodyW.toFixed(1)}×${m.bodyH.toFixed(1)}mm)
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      // オーバーレイの下部に個別操作ミニバーを配置
+      const controlsHTML = activeListWithMetrics.map(({ device, metrics: m }) => `
+        <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl text-xs">
+          <span class="w-3 h-3 rounded-full" style="background:${device.color}"></span>
+          <span class="font-bold text-white">${device.name}</span>
+          ${device.category === 'foldable' ? `
+            <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700">
+              ${m.activeOpen ? '開' : '閉'}
+            </button>
+          ` : ''}
+          <div class="flex gap-0.5">
+            ${[0, 90, 180, 270].map(rot => `
+              <button data-device-id="${device.id}" data-set-rot="${rot}" class="px-1.5 py-0.5 rounded font-mono text-[10px] ${
+                m.rotation === rot ? 'bg-white text-slate-900 font-bold' : 'bg-slate-800 text-slate-400'
+              }">${rot}°</button>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      return `
+        <div class="flex flex-col items-center w-full gap-6">
+          <div class="text-xs text-slate-400">
+            ${layoutMode === 'overlay_bl' ? '【左下揃え】片手で持った際の親指の届きやすさ・横幅のはみ出し量を比較できます' : '【中央揃え】純粋な本体サイズとアスペクト比の違いを比較できます'}
+          </div>
+          <div class="relative bg-slate-900/60 border border-dashed border-slate-700 rounded-2xl ${alignClass}"
+               style="width:${maxW}px; height:${maxH}px;">
+            ${layersHTML}
+          </div>
+          <div class="flex flex-wrap justify-center gap-2">
+            ${controlsHTML}
+          </div>
+        </div>
+      `;
+    }
+
+    /********************************************************************
+     * 7. 実表示面積チャート ＆ スペック比較テーブル描画
+     ********************************************************************/
+    function renderAreaChartAndTable(activeListWithMetrics) {
+      const chartContainer = document.getElementById('areaChartContainer');
+      const tableBody = document.getElementById('specTableBody');
+      const badge = document.getElementById('chartContentBadge');
+      badge.textContent = CONTENT_PRESETS[state.contentKey].label;
+
+      // 最大面積基準（220 cm²）
+      const maxAreaRef = 215;
+
+      // 実表示面積の大きい順にソートしてグラフ化
+      const sortedByContentArea = [...activeListWithMetrics].sort(
+        (a, b) => b.metrics.contentAreaCm2 - a.metrics.contentAreaCm2
+      );
+
+      chartContainer.innerHTML = sortedByContentArea.map(({ device, metrics: m }, idx) => {
+        const totalPct = Math.min(100, (m.screenAreaCm2 / maxAreaRef) * 100);
+        const contentPct = Math.min(100, (m.contentAreaCm2 / maxAreaRef) * 100);
+
+        return `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5">
+                <span class="font-mono text-slate-400 font-bold">#${idx + 1}</span>
+                <span class="w-2.5 h-2.5 rounded-full" style="background:${device.color}"></span>
+                <span class="font-bold text-white">${device.name}</span>
+                <span class="text-[11px] text-slate-400">(${m.nominalInch}" / ${m.rotation}°)</span>
+              </div>
+              <div class="font-mono text-xs">
+                <strong class="text-white">${m.contentAreaCm2.toFixed(1)} cm²</strong>
+                <span class="text-indigo-300 ml-1">(実効 ${m.effectiveInch.toFixed(2)}")</span>
+              </div>
+            </div>
+            <!-- 2層バー（総面積の枠の中に実表示面積を描画） -->
+            <div class="w-full h-5 bg-slate-950 rounded-lg relative overflow-hidden border border-slate-800">
+              <div class="h-full bg-slate-700/40 absolute left-0 top-0 transition-all"
+                   style="width:${totalPct}%" title="画面総面積: ${m.screenAreaCm2.toFixed(1)} cm²"></div>
+              <div class="h-full absolute left-0 top-0 transition-all flex items-center pl-2 text-[10px] font-mono font-bold text-white"
+                   style="width:${contentPct}%; background:${device.color}">
+                有効率 ${m.activeRatioPercent.toFixed(0)}%
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 最軽量端末の重量を取得
+      const minWeight = Math.min(...activeListWithMetrics.map(x => x.device.weightG));
+
+      tableBody.innerHTML = activeListWithMetrics.map(({ device, metrics: m }) => {
+        const cBadge = getCutoutBadgeInfo(m.cutout);
+        const weightDiff = device.weightG - minWeight;
+        const coin100Count = (weightDiff / 4.8).toFixed(1);
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-2.5 pr-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${device.color}"></span>
+                <div>
+                  <div class="font-bold text-white">${device.name}</div>
+                  <div class="text-[11px] text-slate-400">${device.category === 'foldable' ? (m.activeOpen ? '展開時' : '閉じた状態') : '通常スマホ'} / ${m.rotation}°</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-2.5 px-2 font-mono text-slate-200">
+              <div>${m.bodyW.toFixed(1)} × ${m.bodyH.toFixed(1)} mm</div>
+              <div class="text-[11px] text-indigo-300">厚さ ${m.bodyD} mm</div>
+            </td>
+            <td class="py-2.5 px-2 font-mono">
+              <div class="text-white font-bold">実効 ${m.effectiveInch.toFixed(2)}" (${m.contentAreaCm2.toFixed(1)}cm²)</div>
+              <div class="text-[11px] text-slate-400">公称 ${m.nominalInch}" / 黒帯 ${m.blackBarRatioPercent.toFixed(1)}%</div>
+            </td>
+            <td class="py-2.5 px-2">
+              <span class="px-2 py-0.5 rounded border text-[10px] font-semibold inline-block ${cBadge.badgeCls}">
+                ${cBadge.label}
+              </span>
+              <div class="text-[10px] text-slate-400 mt-0.5">${m.cutoutLabel}</div>
+            </td>
+            <td class="py-2.5 pl-2 font-mono">
+              <div class="text-white font-bold">${device.weightG} g</div>
+              <div class="text-[10px] ${weightDiff === 0 ? 'text-emerald-400' : 'text-slate-400'}">
+                ${weightDiff === 0 ? '選択内で最軽量' : `+${weightDiff}g (100円玉 約${coin100Count}枚分)`}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /********************************************************************
+     * 8. 全体再描画とグローバルイベント設定
+     ********************************************************************/
+    function renderAll() {
+      renderModeTabs();
+      renderDeviceSelectors();
+
+      const activeDevices = getActiveDevices();
+      const activeListWithMetrics = activeDevices.map(device => {
+        const dState = state.deviceStates[device.id];
+        const metrics = computeDeviceMetrics(device, dState.isOpen, dState.rotation, state.contentKey);
+        return { device, metrics };
+      });
+
+      renderCanvas(activeListWithMetrics);
+      renderAreaChartAndTable(activeListWithMetrics);
+    }
+
+    // 初期イベントバインド
+    document.getElementById('scaleSlider').addEventListener('input', (e) => {
+      state.scalePxPerMm = parseFloat(e.target.value);
+      document.getElementById('scaleValue').textContent = `${state.scalePxPerMm.toFixed(1)} px/mm`;
+      renderAll();
+    });
+
+    document.getElementById('btnBatchOpen').addEventListener('click', () => {
+      Object.keys(state.deviceStates).forEach(id => { state.deviceStates[id].isOpen = true; });
+      renderAll();
+    });
+
+    document.getElementById('btnBatchClose').addEventListener('click', () => {
+      Object.keys(state.deviceStates).forEach(id => { state.deviceStates[id].isOpen = false; });
+      renderAll();
+    });
+
+    document.querySelectorAll('#batchRotationBtns button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rot = parseInt(btn.dataset.rot, 10);
+        Object.keys(state.deviceStates).forEach(id => { state.deviceStates[id].rotation = rot; });
+        renderAll();
+      });
+    });
+
+    document.getElementById('contentSelect').addEventListener('change', (e) => {
+      state.contentKey = e.target.value;
+      document.getElementById('contentDesc').textContent = CONTENT_PRESETS[state.contentKey].desc;
+      renderAll();
+    });
+
+    document.querySelectorAll('#layoutBtns button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.layout = btn.dataset.layout;
+        document.querySelectorAll('#layoutBtns button').forEach(b => {
+          const isSelected = b.dataset.layout === state.layout;
+          b.className = isSelected
+            ? 'px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-medium text-white text-left flex items-center justify-between'
+            : 'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 border border-slate-700 text-left flex items-center justify-between';
+          b.querySelector('span:last-child').textContent = isSelected ? '●' : '';
+        });
+        renderAll();
+      });
+    });
+
+    document.getElementById('toggleCutoutVis').addEventListener('change', (e) => {
+      state.showCutout = e.target.checked;
+      renderAll();
+    });
+
+    document.getElementById('toggleFoldUdc').addEventListener('change', (e) => {
+      state.useUdcForFold8 = e.target.checked;
+      renderAll();
+    });
+
+    // 初回描画実行
+    renderAll();
+  </script>
+</body>
+</html>
