@@ -121,8 +121,8 @@
             <span>カメラ穴と干渉警告リングを表示</span>
           </label>
           <label class="flex items-center gap-2 text-xs text-slate-200 cursor-pointer bg-slate-800/70 p-2 rounded-lg border border-slate-700">
-            <input id="toggleFoldUdc" type="checkbox" checked class="accent-indigo-500 w-4 h-4" />
-            <span>Galaxy Z Fold8内側をUDC（画面下カメラ）として判定</span>
+            <input id="toggleIphoneDuoUdc" type="checkbox" checked class="accent-indigo-500 w-4 h-4" />
+            <span>iPhone Duo内側をUDC（画面下カメラ）として判定</span>
           </label>
         </div>
 
@@ -165,7 +165,7 @@
       <!-- 詳細スペック・厚み・重量・干渉判定テーブル -->
       <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg overflow-x-auto">
         <h2 class="text-sm font-bold text-white mb-1">選択中の端末 スペック・厚み・カメラ干渉一覧</h2>
-        <p class="text-xs text-slate-400 mb-4">最軽量端末との重量差（単3電池 約23g / 100円玉 約4.8g換算）と側面厚みの比較です。</p>
+        <p class="text-xs text-slate-400 mb-4">最軽量端末との重量差（100円玉 約4.8g換算）と側面厚みの比較です。</p>
         <table class="w-full text-left border-collapse text-xs">
           <thead>
             <tr class="border-b border-slate-800 text-slate-400">
@@ -205,7 +205,7 @@
         open: {
           bodyW: 161.4, bodyH: 123.9, bodyD: 4.5,
           inch: 7.6, resW: 2448, resH: 1848,
-          cutout: { type: 'udc', rx: 0.75, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'UDC 画面下カメラ (右半分上)' }
+          cutout: { type: 'punch_hole', rx: 0.75, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'パンチホール (右半分上)' }
         }
       },
       {
@@ -222,7 +222,7 @@
         open: {
           bodyW: 143.0, bodyH: 158.0, bodyD: 4.1,
           inch: 8.0, resW: 2256, resH: 2504,
-          cutout: { type: 'udc', rx: 0.75, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'UDC 画面下カメラ (右半分上)' }
+          cutout: { type: 'punch_hole', rx: 0.75, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'パンチホール (右半分上)' }
         }
       },
       {
@@ -239,7 +239,7 @@
         open: {
           bodyW: 164.6, bodyH: 117.8, bodyD: 5.2,
           inch: 7.58, resW: null, resH: null,
-          cutout: { type: 'punch_hole', rx: 0.78, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'パンチホール (右上寄り)' }
+          cutout: { type: 'udc', rx: 0.78, offsetTopMm: 4.8, wMm: 3.8, hMm: 3.8, label: 'UDC 画面下カメラ (右上寄り)' }
         }
       },
       {
@@ -334,16 +334,16 @@
      * 2. アプリケーション状態（State）
      ********************************************************************/
     const state = {
-      mode: 'vs_bar', // 初期表示は「通常スマホとの比較モード」
+      mode: 'vs_bar',
       scalePxPerMm: 2.1,
       layout: 'side', // 'side' | 'overlay_bl' | 'overlay_center'
       contentKey: 'video_16_9',
       showCutout: true,
-      useUdcForFold8: true,
+      useUdcForIphoneDuo: true, // iPhone Duo内側をUDCとして判定するか
       // モード別の選択状態
       singleFoldId: 'zfold8',
       vsBarId: 'iphone18pm',
-      vsFoldId: 'zfold8',
+      vsFoldId: 'iphoneduo',
       multiFoldIds: ['zfold8', 'zfold8u', 'iphoneduo', 'pixel11pf'],
       multiAllIds: ['zfold8', 'iphoneduo', 'pixel11pf', 'iphone18pm', 'pixel11p'],
       // 各端末ごとの個別状態（開閉・回転角）
@@ -409,11 +409,19 @@
       const activeRatioPercent = (contentAreaCm2 / screenAreaCm2) * 100;
       const blackBarRatioPercent = Math.max(0, 100 - activeRatioPercent);
 
-      // パンチホール（カメラ穴）の回転座標変換と干渉判定
+      // iPhone Duo内側のUDC切り替え判定とラベル更新
       const cutoutSpec = spec.cutout;
       let effectiveCutoutType = cutoutSpec.type;
-      if (effectiveCutoutType === 'udc' && !state.useUdcForFold8) {
-        effectiveCutoutType = 'punch_hole';
+      let effectiveCutoutLabel = cutoutSpec.label;
+
+      if (device.id === 'iphoneduo' && activeOpen) {
+        if (state.useUdcForIphoneDuo) {
+          effectiveCutoutType = 'udc';
+          effectiveCutoutLabel = 'UDC 画面下カメラ (右上寄り)';
+        } else {
+          effectiveCutoutType = 'punch_hole';
+          effectiveCutoutLabel = 'パンチホール (右上寄り)';
+        }
       }
 
       const interference = evaluateCutoutAtRotation(
@@ -443,7 +451,6 @@
               cContW = cScreenH * targetAspect;
             }
           }
-          // 面積が現在と同等以上で、かつ黒帯に隠れる向きがあれば提案
           const candEval = evaluateCutoutAtRotation(
             baseScreenW, baseScreenH, cContW, cContH, cutoutSpec, effectiveCutoutType, candRot
           );
@@ -472,7 +479,7 @@
         blackBarRatioPercent,
         barType,
         cutout: interference,
-        cutoutLabel: cutoutSpec.label,
+        cutoutLabel: effectiveCutoutLabel,
         suggestedAngle
       };
     }
@@ -903,11 +910,9 @@
     }
 
     function buildOverlayCanvasHTML(activeListWithMetrics, scale, layoutMode) {
-      // 最大幅・最大高さを求めてコンテナサイズを決定
       const maxW = Math.max(...activeListWithMetrics.map(x => x.metrics.bodyW * scale)) + 40;
       const maxH = Math.max(...activeListWithMetrics.map(x => x.metrics.bodyH * scale)) + 40;
 
-      // 面積が大きい順に奥（下層）に描画すると重なりが見やすい
       const sorted = [...activeListWithMetrics].sort(
         (a, b) => (b.metrics.bodyW * b.metrics.bodyH) - (a.metrics.bodyW * a.metrics.bodyH)
       );
@@ -933,7 +938,6 @@
         `;
       }).join('');
 
-      // オーバーレイの下部に個別操作ミニバーを配置
       const controlsHTML = activeListWithMetrics.map(({ device, metrics: m }) => `
         <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl text-xs">
           <span class="w-3 h-3 rounded-full" style="background:${device.color}"></span>
@@ -978,10 +982,8 @@
       const badge = document.getElementById('chartContentBadge');
       badge.textContent = CONTENT_PRESETS[state.contentKey].label;
 
-      // 最大面積基準（220 cm²）
       const maxAreaRef = 215;
 
-      // 実表示面積の大きい順にソートしてグラフ化
       const sortedByContentArea = [...activeListWithMetrics].sort(
         (a, b) => b.metrics.contentAreaCm2 - a.metrics.contentAreaCm2
       );
@@ -1004,7 +1006,6 @@
                 <span class="text-indigo-300 ml-1">(実効 ${m.effectiveInch.toFixed(2)}")</span>
               </div>
             </div>
-            <!-- 2層バー（総面積の枠の中に実表示面積を描画） -->
             <div class="w-full h-5 bg-slate-950 rounded-lg relative overflow-hidden border border-slate-800">
               <div class="h-full bg-slate-700/40 absolute left-0 top-0 transition-all"
                    style="width:${totalPct}%" title="画面総面積: ${m.screenAreaCm2.toFixed(1)} cm²"></div>
@@ -1017,7 +1018,6 @@
         `;
       }).join('');
 
-      // 最軽量端末の重量を取得
       const minWeight = Math.min(...activeListWithMetrics.map(x => x.device.weightG));
 
       tableBody.innerHTML = activeListWithMetrics.map(({ device, metrics: m }) => {
@@ -1129,8 +1129,8 @@
       renderAll();
     });
 
-    document.getElementById('toggleFoldUdc').addEventListener('change', (e) => {
-      state.useUdcForFold8 = e.target.checked;
+    document.getElementById('toggleIphoneDuoUdc').addEventListener('change', (e) => {
+      state.useUdcForIphoneDuo = e.target.checked;
       renderAll();
     });
 
