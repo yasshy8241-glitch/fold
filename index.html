@@ -128,7 +128,7 @@
     [data-profile="ultrawide"] #workspaceContainer {
       max-width: 100%;
       display: grid;
-      grid-template-columns: 370px minmax(0, 1fr) 480px;
+      grid-template-columns: 380px minmax(0, 1fr) 480px;
       gap: 1.25rem;
       align-items: start;
     }
@@ -167,7 +167,7 @@
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-base md:text-xl font-black tracking-tight theme-text-main">Fold Scale</h1>
-              <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 text-[10px] font-bold">v2.1</span>
+              <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 text-[10px] font-bold">v2.3</span>
               <span id="saveStatusBadge" class="text-[10px] text-emerald-500 font-medium hidden sm:inline">✓ 自動保存ON</span>
             </div>
             <p class="text-[10px] theme-text-sub hidden sm:block">折りたたみ＆通常スマホ 実寸・2画面分割・パンチホール比較</p>
@@ -209,7 +209,7 @@
           </div>
 
           <!-- 保存状態リセットボタン -->
-          <button id="btnResetStorage" title="保存された設定を初期状態に戻します" class="px-2 py-1.5 rounded-lg theme-input border text-[11px] theme-text-sub hover:text-rose-400 transition">
+          <button id="btnResetStorage" title="保存された設定と並び順を初期状態に戻します" class="px-2 py-1.5 rounded-lg theme-input border text-[11px] theme-text-sub hover:text-rose-400 transition">
             ↺ リセット
           </button>
         </div>
@@ -250,13 +250,15 @@
     <!-- 【左ペイン / 上部コントロール群】 -->
     <div id="leftControlColumn" class="space-y-4">
 
-      <!-- 1. モード切替タブ（4モード）＆端末セレクター -->
+      <!-- 1. モード切替タブ（4モード）＆端末セレクター ＆ 表示順並び替え -->
       <section class="theme-panel border rounded-xl p-3.5 shadow-sm">
-        <div class="text-[11px] font-semibold theme-text-sub uppercase tracking-wider mb-2">STEP 1: 比較モード ＆ 端末選択</div>
+        <div class="text-[11px] font-semibold theme-text-sub uppercase tracking-wider mb-2">STEP 1: 比較モード ＆ 端末選択・並び順</div>
         <div id="modeTabs" class="grid grid-cols-2 lg:grid-cols-4 gap-2"></div>
         <div class="mt-3 pt-3 border-t border-slate-500/20">
           <div id="deviceSelectorArea" class="space-y-2.5"></div>
         </div>
+        <!-- 表示順並び替えバー -->
+        <div id="deviceOrderBar" class="mt-2.5 pt-2.5 border-t border-slate-500/15 flex flex-wrap items-center gap-1.5"></div>
       </section>
 
       <!-- 2. 一括コントロール＆コンテンツ・2画面分割・寸法設定バー -->
@@ -265,7 +267,7 @@
 
           <!-- ① 一括：開閉＆4方向回転 -->
           <div class="space-y-1.5 theme-subpanel p-2.5 rounded-lg border">
-            <label class="text-[11px] font-semibold theme-text-sub block">一括：開閉 ＆ 4方向回転</label>
+            <label class="text-[11px] font-semibold theme-text-sub block">一括：端末の開閉 ＆ 4方向回転</label>
             <div class="flex flex-wrap gap-1.5">
               <button id="btnBatchOpen" class="flex-1 py-1.5 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white transition">すべて開く</button>
               <button id="btnBatchClose" class="flex-1 py-1.5 px-2 rounded-lg theme-input border text-xs font-medium hover:opacity-80 transition">すべて閉じる</button>
@@ -278,48 +280,67 @@
             </div>
           </div>
 
-          <!-- ② 表示コンテンツ（単一表示 vs 2画面分割マルチウィンドウ比較） -->
+          <!-- ② 表示コンテンツ ＆ コンテンツ角度回転（単一表示 vs 2画面分割） -->
           <div class="space-y-1.5 theme-subpanel p-2.5 rounded-lg border">
             <div class="flex items-center justify-between gap-1">
-              <label class="text-[11px] font-semibold theme-text-sub">表示コンテンツ</label>
+              <label class="text-[11px] font-semibold theme-text-sub">表示コンテンツ ＆ 角度</label>
               <div class="flex rounded-md p-0.5 theme-input border text-[10px]">
                 <button id="btnModeSingleContent" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-bold transition">単一表示</button>
                 <button id="btnModeSplitContent" class="px-2 py-0.5 rounded font-bold transition">2画面分割 (A+B)</button>
               </div>
             </div>
 
-            <!-- 単一コンテンツ選択エリア -->
-            <div id="singleContentControls" class="space-y-1 pt-0.5">
+            <!-- 単一コンテンツ選択 ＆ コンテンツ回転エリア -->
+            <div id="singleContentControls" class="space-y-1.5 pt-0.5">
               <select id="contentSelect" class="w-full theme-input border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500">
-                <option value="video_16_9">16:9 動画（YouTube・アニメ 横）</option>
-                <option value="manga_spread">√2:1 見開きマンガ（単行本2ページ横）</option>
-                <option value="cinema_21_9">21:9 映画（シネマスコープ 横）</option>
-                <option value="manga_single">1:√2 単ページマンガ（1ページ縦読み）</option>
-                <option value="tablet_4_3">4:3 写真・タブレット比率（横）</option>
+                <option value="video_16_9">16:9 動画（YouTube・アニメ）</option>
+                <option value="imax_190_1">IMAX：1.90:1</option>
+                <option value="cinema_21_9">21:9 映画（シネマスコープ）</option>
+                <option value="manga_spread">√2:1 見開きマンガ（単行本2ページ）</option>
+                <option value="manga_single">1:√2 単ページマンガ（1ページ読み）</option>
+                <option value="tablet_4_3">4:3 写真・タブレット比率</option>
                 <option value="fullscreen">全画面表示（ゲーム・ブラウザ）</option>
-                <option value="wallpaper_clean">壁紙プレビュー（添付画像スタイル）</option>
+                <option value="wallpaper_clean">壁紙プレビュー</option>
               </select>
-              <p id="contentDesc" class="text-[10px] theme-text-sub leading-snug">上下・左右の黒帯とカメラ干渉を自動計算します。</p>
+              <!-- コンテンツ自体の角度回転ボタン -->
+              <div class="flex items-center justify-between gap-1 pt-0.5">
+                <span class="text-[10px] theme-text-sub font-medium whitespace-nowrap">コンテンツ角度:</span>
+                <div class="flex flex-1 gap-1" id="contentRotationBtns">
+                  <button data-crot="0" class="flex-1 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-mono font-bold border border-indigo-500">0°</button>
+                  <button data-crot="90" class="flex-1 py-0.5 rounded theme-input border text-[10px] font-mono">90°(縦横転)</button>
+                  <button data-crot="180" class="flex-1 py-0.5 rounded theme-input border text-[10px] font-mono">180°</button>
+                  <button data-crot="270" class="flex-1 py-0.5 rounded theme-input border text-[10px] font-mono">270°</button>
+                </div>
+              </div>
             </div>
 
-            <!-- 2画面分割（マルチウィンドウ）選択エリア -->
+            <!-- 2画面分割（マルチウィンドウ）選択 ＆ 個別回転エリア -->
             <div id="splitContentControls" class="hidden space-y-1.5 pt-0.5 text-[11px]">
               <div class="grid grid-cols-2 gap-1.5">
-                <div>
-                  <span class="text-[10px] text-indigo-400 font-bold block">画面A (上/左)</span>
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-indigo-400 font-bold">画面A (上/左)</span>
+                    <button id="btnRotateSplitA" class="px-1.5 py-0.5 rounded theme-input border text-[9px] font-mono">0°</button>
+                  </div>
                   <select id="splitContentA" class="w-full theme-input border rounded px-1.5 py-1 text-[11px]">
                     <option value="video_16_9" selected>16:9 動画</option>
-                    <option value="fullscreen">SNS・ブラウザ(全画面)</option>
+                    <option value="imax_190_1">IMAX：1.90:1</option>
+                    <option value="cinema_21_9">21:9 映画</option>
+                    <option value="fullscreen">SNS・全画面</option>
                     <option value="manga_single">単ページマンガ</option>
                     <option value="tablet_4_3">4:3 写真・資料</option>
-                    <option value="cinema_21_9">21:9 映画</option>
                   </select>
                 </div>
-                <div>
-                  <span class="text-[10px] text-pink-400 font-bold block">画面B (下/右)</span>
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-pink-400 font-bold">画面B (下/右)</span>
+                    <button id="btnRotateSplitB" class="px-1.5 py-0.5 rounded theme-input border text-[9px] font-mono">0°</button>
+                  </div>
                   <select id="splitContentB" class="w-full theme-input border rounded px-1.5 py-1 text-[11px]">
-                    <option value="fullscreen" selected>SNS・ブラウザ(全画面)</option>
+                    <option value="fullscreen" selected>SNS・全画面</option>
                     <option value="video_16_9">16:9 動画</option>
+                    <option value="imax_190_1">IMAX：1.90:1</option>
+                    <option value="cinema_21_9">21:9 映画</option>
                     <option value="manga_single">単ページマンガ</option>
                     <option value="tablet_4_3">4:3 メモ・資料</option>
                   </select>
@@ -327,20 +348,20 @@
               </div>
               <div class="grid grid-cols-2 gap-1.5">
                 <select id="splitDirection" class="theme-input border rounded px-1.5 py-1 text-[11px]">
-                  <option value="auto">分割方向: 自動(長辺を分割)</option>
+                  <option value="auto">分割方向: 自動(長辺分割)</option>
                   <option value="horizontal">左右に並べる (左｜右)</option>
                   <option value="vertical">上下に並べる (上／下)</option>
                 </select>
                 <select id="splitRatioMode" class="theme-input border rounded px-1.5 py-1 text-[11px]">
                   <option value="fit_a_16_9">比率: 画面Aピッタリ＋残りB</option>
-                  <option value="50_50" selected>比率: 50 : 50 (均等2分割)</option>
+                  <option value="50_50" selected>比率: 50 : 50 (均等)</option>
                   <option value="70_30">比率: 70 : 30 (A優先)</option>
                 </select>
               </div>
             </div>
           </div>
 
-          <!-- ③ 縦横寸法ガイド（cm / mm）＆ クリーン展示 -->
+          <!-- ③ 縦横寸法ガイド（cm / mm）＆ 枠なしクリーン表示 -->
           <div class="space-y-1.5 theme-subpanel p-2.5 rounded-lg border">
             <div class="flex items-center justify-between">
               <label class="text-[11px] font-semibold text-emerald-500 block">📏 縦横寸法ガイド (On/Off)</label>
@@ -356,7 +377,7 @@
             </label>
             <label class="flex items-center gap-2 text-xs cursor-pointer theme-input p-1.5 rounded border">
               <input id="toggleCleanShowcase" type="checkbox" class="accent-indigo-500 w-3.5 h-3.5" />
-              <span>枠なしクリーン展示（添付画像風）</span>
+              <span>枠なしクリーン表示</span>
             </label>
           </div>
 
@@ -588,13 +609,14 @@
     ];
 
     const CONTENT_PRESETS = {
-      video_16_9:      { label: '16:9 動画', shortLabel: '16:9動画', aspect: 16 / 9, desc: 'YouTubeや一般的な動画（横長 1.78:1）' },
-      manga_spread:    { label: '見開きマンガ (√2:1)', shortLabel: '見開きマンガ', aspect: Math.SQRT2, desc: '単行本2ページ見開き（横長 1.414:1）' },
-      cinema_21_9:     { label: '21:9 映画', shortLabel: '21:9映画', aspect: 21 / 9, desc: 'シネマスコープ映画（超横長 2.33:1）' },
-      manga_single:    { label: '単ページマンガ (1:√2)', shortLabel: '単ページマンガ', aspect: 1 / Math.SQRT2, desc: 'マンガ1ページ縦読み（縦長 0.707:1）' },
-      tablet_4_3:      { label: '4:3 タブレット・写真', shortLabel: '4:3資料', aspect: 4 / 3, desc: 'iPad標準比率・写真（横長 1.33:1）' },
-      fullscreen:      { label: '全画面 (SNS・ブラウザ)', shortLabel: 'SNS/全画面', aspect: null, desc: '領域全体を使うアプリ・ブラウザ（黒帯0%）' },
-      wallpaper_clean: { label: '壁紙プレビュー (添付画像風)', shortLabel: '壁紙', aspect: null, desc: '添付画像のようにフル画面壁紙とパンチホールをクリーンに表示' }
+      video_16_9:      { label: '16:9 動画', shortLabel: '16:9動画', rotatedShortLabel: '9:16縦動画', aspect: 16 / 9 },
+      imax_190_1:      { label: 'IMAX：1.90:1', shortLabel: 'IMAX(1.90:1)', rotatedShortLabel: '縦IMAX(1:1.90)', aspect: 1.90 / 1 },
+      cinema_21_9:     { label: '21:9 映画', shortLabel: '21:9映画', rotatedShortLabel: '9:21縦映画', aspect: 21 / 9 },
+      manga_spread:    { label: '見開きマンガ (√2:1)', shortLabel: '見開きマンガ', rotatedShortLabel: '縦見開き(1:√2)', aspect: Math.SQRT2 },
+      manga_single:    { label: '単ページマンガ (1:√2)', shortLabel: '単ページ縦', rotatedShortLabel: '単ページ横(√2:1)', aspect: 1 / Math.SQRT2 },
+      tablet_4_3:      { label: '4:3 タブレット・写真', shortLabel: '4:3資料', rotatedShortLabel: '3:4縦資料', aspect: 4 / 3 },
+      fullscreen:      { label: '全画面 (SNS・ブラウザ)', shortLabel: 'SNS/全画面', rotatedShortLabel: 'SNS/全画面', aspect: null },
+      wallpaper_clean: { label: '壁紙プレビュー', shortLabel: '壁紙', rotatedShortLabel: '壁紙(回転)', aspect: null }
     };
 
     const PROFILE_META = {
@@ -633,7 +655,8 @@
       DEVICES.forEach(d => {
         ds[d.id] = {
           isOpen: d.category === 'foldable',
-          rotation: 0
+          rotation: 0,
+          contentRotOffset: 0
         };
       });
 
@@ -647,15 +670,19 @@
         layout: 'side',
         isSplitContent: false,
         contentKey: 'video_16_9',
+        contentRotation: 0,
         splitContentA: 'video_16_9',
         splitContentB: 'fullscreen',
+        splitRotA: 0,
+        splitRotB: 0,
         splitDirection: 'auto',
         splitRatioMode: '50_50',
         showCutout: true,
         useUdcForIphoneDuo: true,
         showDimLines: true,
         dimUnit: 'mm',
-        cleanShowcase: true,
+        cleanShowcase: false,
+        deviceOrder: DEVICES.map(d => d.id),
         singleFoldId: 'zfold8',
         vsBarId: 'iphone18pm',
         vsFoldId: 'zfold8',
@@ -678,8 +705,11 @@
           layout: state.layout,
           isSplitContent: state.isSplitContent,
           contentKey: state.contentKey,
+          contentRotation: state.contentRotation,
           splitContentA: state.splitContentA,
           splitContentB: state.splitContentB,
+          splitRotA: state.splitRotA,
+          splitRotB: state.splitRotB,
           splitDirection: state.splitDirection,
           splitRatioMode: state.splitRatioMode,
           showCutout: state.showCutout,
@@ -687,6 +717,7 @@
           showDimLines: state.showDimLines,
           dimUnit: state.dimUnit,
           cleanShowcase: state.cleanShowcase,
+          deviceOrder: state.deviceOrder,
           singleFoldId: state.singleFoldId,
           vsBarId: state.vsBarId,
           vsFoldId: state.vsFoldId,
@@ -709,7 +740,8 @@
 
         const simpleKeys = [
           'theme', 'profileMode', 'autoFitScale', 'mode', 'scalePxPerMm',
-          'layout', 'isSplitContent', 'contentKey', 'splitContentA', 'splitContentB',
+          'layout', 'isSplitContent', 'contentKey', 'contentRotation',
+          'splitContentA', 'splitContentB', 'splitRotA', 'splitRotB',
           'splitDirection', 'splitRatioMode', 'showCutout', 'useUdcForIphoneDuo',
           'showDimLines', 'dimUnit', 'cleanShowcase', 'singleFoldId', 'vsBarId', 'vsFoldId'
         ];
@@ -717,6 +749,18 @@
           if (parsed[k] !== undefined) state[k] = parsed[k];
         });
 
+        if (!CONTENT_PRESETS[state.contentKey]) state.contentKey = 'video_16_9';
+        if (!CONTENT_PRESETS[state.splitContentA]) state.splitContentA = 'video_16_9';
+        if (!CONTENT_PRESETS[state.splitContentB]) state.splitContentB = 'fullscreen';
+
+        if (Array.isArray(parsed.deviceOrder)) {
+          const allIds = DEVICES.map(d => d.id);
+          const validOrder = parsed.deviceOrder.filter(id => allIds.includes(id));
+          allIds.forEach(id => {
+            if (!validOrder.includes(id)) validOrder.push(id);
+          });
+          state.deviceOrder = validOrder;
+        }
         if (Array.isArray(parsed.multiFoldIds) && parsed.multiFoldIds.length > 0) {
           state.multiFoldIds = parsed.multiFoldIds;
         }
@@ -730,6 +774,9 @@
                 isOpen: Boolean(parsed.deviceStates[d.id].isOpen),
                 rotation: [0, 90, 180, 270].includes(parsed.deviceStates[d.id].rotation)
                   ? parsed.deviceStates[d.id].rotation
+                  : 0,
+                contentRotOffset: [0, 90].includes(parsed.deviceStates[d.id].contentRotOffset)
+                  ? parsed.deviceStates[d.id].contentRotOffset
                   : 0
               };
             }
@@ -741,24 +788,40 @@
     }
 
     function syncControlsWithState() {
-      // テーマの同期
       document.body.setAttribute('data-theme', state.theme);
       const isLight = state.theme === 'light';
       document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
       document.getElementById('themeLabel').textContent = isLight ? 'ライトモード' : 'ダークモード';
       document.getElementById('exportBgTheme').value = state.theme;
 
-      // チェックボックス＆セレクトボックスの同期
       document.getElementById('autoFitScaleToggle').checked = state.autoFitScale;
       document.getElementById('scaleSlider').value = state.scalePxPerMm;
       document.getElementById('scaleValue').textContent = `${state.scalePxPerMm.toFixed(2)} px/mm`;
 
       document.getElementById('contentSelect').value = state.contentKey;
-      document.getElementById('contentDesc').textContent = CONTENT_PRESETS[state.contentKey]?.desc || '';
       document.getElementById('splitContentA').value = state.splitContentA;
       document.getElementById('splitContentB').value = state.splitContentB;
       document.getElementById('splitDirection').value = state.splitDirection;
       document.getElementById('splitRatioMode').value = state.splitRatioMode;
+
+      document.querySelectorAll('#contentRotationBtns button').forEach(btn => {
+        const r = parseInt(btn.dataset.crot, 10);
+        const active = r === state.contentRotation;
+        btn.className = active
+          ? 'flex-1 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-mono font-bold border border-indigo-500'
+          : 'flex-1 py-0.5 rounded theme-input border text-[10px] font-mono';
+      });
+
+      const btnRotA = document.getElementById('btnRotateSplitA');
+      const btnRotB = document.getElementById('btnRotateSplitB');
+      btnRotA.textContent = `角度:${state.splitRotA}°`;
+      btnRotA.className = state.splitRotA === 90
+        ? 'px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-mono font-bold'
+        : 'px-1.5 py-0.5 rounded theme-input border text-[9px] font-mono';
+      btnRotB.textContent = `角度:${state.splitRotB}°`;
+      btnRotB.className = state.splitRotB === 90
+        ? 'px-1.5 py-0.5 rounded bg-pink-600 text-white text-[9px] font-mono font-bold'
+        : 'px-1.5 py-0.5 rounded theme-input border text-[9px] font-mono';
 
       const btnSingleContent = document.getElementById('btnModeSingleContent');
       const btnSplitContent = document.getElementById('btnModeSplitContent');
@@ -792,7 +855,44 @@
     }
 
     /********************************************************************
-     * 3. 寸法フォーマット関数（cm / mm）
+     * 3. 端末の取得 ＆ 表示順番の並び替えロジック
+     ********************************************************************/
+    function getActiveDevices() {
+      let filtered = [];
+      if (state.mode === 'single') {
+        filtered = DEVICES.filter(d => d.id === state.singleFoldId);
+      } else if (state.mode === 'vs_bar') {
+        filtered = DEVICES.filter(d => d.id === state.vsFoldId || d.id === state.vsBarId);
+      } else if (state.mode === 'multi_fold') {
+        filtered = DEVICES.filter(d => d.category === 'foldable' && state.multiFoldIds.includes(d.id));
+      } else {
+        filtered = DEVICES.filter(d => state.multiAllIds.includes(d.id));
+      }
+      return filtered.sort((a, b) => state.deviceOrder.indexOf(a.id) - state.deviceOrder.indexOf(b.id));
+    }
+
+    function moveActiveDeviceOrder(deviceId, direction) {
+      const activeIds = getActiveDevices().map(d => d.id);
+      const currentIdx = activeIds.indexOf(deviceId);
+      if (currentIdx === -1) return;
+      const targetIdx = currentIdx + direction;
+      if (targetIdx < 0 || targetIdx >= activeIds.length) return;
+
+      const neighborId = activeIds[targetIdx];
+      const orderIdxA = state.deviceOrder.indexOf(deviceId);
+      const orderIdxB = state.deviceOrder.indexOf(neighborId);
+      if (orderIdxA === -1 || orderIdxB === -1) return;
+
+      const nextOrder = [...state.deviceOrder];
+      nextOrder[orderIdxA] = neighborId;
+      nextOrder[orderIdxB] = deviceId;
+      state.deviceOrder = nextOrder;
+
+      renderAll();
+    }
+
+    /********************************************************************
+     * 4. 寸法フォーマット関数 ＆ ビューポート自動判別エンジン
      ********************************************************************/
     function formatDimension(mmValue, unitMode = state.dimUnit) {
       const cmValue = mmValue / 10;
@@ -801,9 +901,6 @@
       return `${cmValue.toFixed(1)}cm (${mmValue.toFixed(1)}mm)`;
     }
 
-    /********************************************************************
-     * 4. デバイス比率の自動判別 ＆ 自動スケール計算エンジン
-     ********************************************************************/
     function detectViewportProfile(w, h) {
       const ratio = w / Math.max(1, h);
       if (w >= 1440 && ratio >= 2.05) return 'ultrawide';
@@ -854,7 +951,7 @@
         if (state.layout === 'side' && activeDevs.length > 0) {
           let availW = w - 90;
           if (state.activeProfile === 'ultrawide') {
-            availW = w - 370 - 480 - 150;
+            availW = w - 380 - 480 - 150;
           }
           const extraPerCard = (state.showDimLines ? 85 : 52);
           const cardPaddingTotal = activeDevs.length * extraPerCard;
@@ -880,8 +977,32 @@
     }
 
     /********************************************************************
-     * 5. 幾何計算エンジン（単一表示 ＆ 2画面分割マルチウィンドウ対応）
+     * 5. 幾何計算エンジン（コンテンツ角度回転 ＆ 2画面分割対応）
      ********************************************************************/
+    function getRotatedAspectAndLabel(presetKey, totalContentRot) {
+      const preset = CONTENT_PRESETS[presetKey] || CONTENT_PRESETS.video_16_9;
+      const normRot = ((totalContentRot % 360) + 360) % 360;
+      const isSwapped = normRot === 90 || normRot === 270;
+
+      if (preset.aspect === null) {
+        return {
+          aspect: null,
+          shortLabel: normRot === 0 ? preset.shortLabel : `${preset.shortLabel}(${normRot}°)` ,
+          normRot
+        };
+      }
+
+      const effAspect = isSwapped ? (1 / preset.aspect) : preset.aspect;
+      const baseLabel = isSwapped ? preset.rotatedShortLabel : preset.shortLabel;
+      const angleSuffix = normRot === 0 ? '' : `(${normRot}°)`;
+
+      return {
+        aspect: effAspect,
+        shortLabel: `${baseLabel}${angleSuffix}`,
+        normRot
+      };
+    }
+
     function fitBoxWithin(containerW, containerH, targetAspect) {
       if (targetAspect === null) {
         return { w: containerW, h: containerH };
@@ -894,10 +1015,11 @@
       }
     }
 
-    function computeLayoutRectsForScreen(screenW, screenH) {
+    function computeLayoutRectsForScreen(screenW, screenH, deviceContentRotOffset = 0) {
       if (!state.isSplitContent) {
-        const preset = CONTENT_PRESETS[state.contentKey] || CONTENT_PRESETS.video_16_9;
-        const fit = fitBoxWithin(screenW, screenH, preset.aspect);
+        const totalRot = (state.contentRotation + deviceContentRotOffset) % 360;
+        const { aspect, shortLabel, normRot } = getRotatedAspectAndLabel(state.contentKey, totalRot);
+        const fit = fitBoxWithin(screenW, screenH, aspect);
         const cx = (screenW - fit.w) / 2;
         const cy = (screenH - fit.h) / 2;
         const areaCm2 = (fit.w * fit.h) / 100;
@@ -910,7 +1032,8 @@
           panes: [
             {
               id: 'single',
-              label: preset.shortLabel,
+              label: shortLabel,
+              contentRot: normRot,
               containerX: 0, containerY: 0, containerW: screenW, containerH: screenH,
               x: cx, y: cy, w: fit.w, h: fit.h,
               areaCm2, effInch,
@@ -920,8 +1043,10 @@
         };
       }
 
-      const presetA = CONTENT_PRESETS[state.splitContentA] || CONTENT_PRESETS.video_16_9;
-      const presetB = CONTENT_PRESETS[state.splitContentB] || CONTENT_PRESETS.fullscreen;
+      const rotA = (state.splitRotA + deviceContentRotOffset) % 360;
+      const rotB = (state.splitRotB + deviceContentRotOffset) % 360;
+      const infoA = getRotatedAspectAndLabel(state.splitContentA, rotA);
+      const infoB = getRotatedAspectAndLabel(state.splitContentB, rotB);
       const dividerMm = 1.4;
 
       let dir = state.splitDirection;
@@ -937,7 +1062,7 @@
         let ratioA = 0.5;
         if (state.splitRatioMode === '70_30') ratioA = 0.7;
         else if (state.splitRatioMode === 'fit_a_16_9') {
-          const idealAW = presetA.aspect ? (screenH * presetA.aspect) : (usableW * 0.5);
+          const idealAW = infoA.aspect ? (screenH * infoA.aspect) : (usableW * 0.5);
           ratioA = Math.max(0.28, Math.min(0.72, idealAW / usableW));
         }
         paneAContW = usableW * ratioA;
@@ -950,7 +1075,7 @@
         let ratioA = 0.5;
         if (state.splitRatioMode === '70_30') ratioA = 0.7;
         else if (state.splitRatioMode === 'fit_a_16_9') {
-          const idealAH = presetA.aspect ? (screenW / presetA.aspect) : (usableH * 0.5);
+          const idealAH = infoA.aspect ? (screenW / infoA.aspect) : (usableH * 0.5);
           ratioA = Math.max(0.25, Math.min(0.75, idealAH / usableH));
         }
         paneAContW = screenW;
@@ -960,12 +1085,13 @@
         paneBContY = paneAContH + dividerMm;
       }
 
-      const fitA = fitBoxWithin(paneAContW, paneAContH, presetA.aspect);
-      const fitB = fitBoxWithin(paneBContW, paneBContH, presetB.aspect);
+      const fitA = fitBoxWithin(paneAContW, paneAContH, infoA.aspect);
+      const fitB = fitBoxWithin(paneBContW, paneBContH, infoB.aspect);
 
       const rectA = {
         id: 'A',
-        label: `A:${presetA.shortLabel}`,
+        label: `A:${infoA.shortLabel}`,
+        contentRot: infoA.normRot,
         containerX: paneAContX, containerY: paneAContY, containerW: paneAContW, containerH: paneAContH,
         x: paneAContX + (paneAContW - fitA.w) / 2,
         y: paneAContY + (paneAContH - fitA.h) / 2,
@@ -977,7 +1103,8 @@
 
       const rectB = {
         id: 'B',
-        label: `B:${presetB.shortLabel}`,
+        label: `B:${infoB.shortLabel}`,
+        contentRot: infoB.normRot,
         containerX: paneBContX, containerY: paneBContY, containerW: paneBContW, containerH: paneBContH,
         x: paneBContX + (paneBContW - fitB.w) / 2,
         y: paneBContY + (paneBContH - fitB.h) / 2,
@@ -1068,7 +1195,7 @@
       };
     }
 
-    function computeDeviceMetrics(device, isOpen, rotation) {
+    function computeDeviceMetrics(device, isOpen, rotation, contentRotOffset = 0) {
       const activeOpen = device.category === 'foldable' && isOpen;
       const spec = activeOpen ? device.open : device.closed;
       const diagMm = spec.inch * 25.4;
@@ -1087,7 +1214,7 @@
       const screenH = isSwapped ? baseScreenW : baseScreenH;
       const screenAreaCm2 = (screenW * screenH) / 100;
 
-      const layoutInfo = computeLayoutRectsForScreen(screenW, screenH);
+      const layoutInfo = computeLayoutRectsForScreen(screenW, screenH, contentRotOffset);
       const contentAreaCm2 = layoutInfo.totalContentAreaCm2;
       const effectiveInch = layoutInfo.effectiveInch;
       const activeRatioPercent = (contentAreaCm2 / screenAreaCm2) * 100;
@@ -1118,7 +1245,7 @@
           const candSwap = candRot === 90 || candRot === 270;
           const cScreenW = candSwap ? baseScreenH : baseScreenW;
           const cScreenH = candSwap ? baseScreenW : baseScreenH;
-          const candLayout = computeLayoutRectsForScreen(cScreenW, cScreenH);
+          const candLayout = computeLayoutRectsForScreen(cScreenW, cScreenH, contentRotOffset);
           const candEval = evaluateCutoutAgainstPanes(
             baseScreenW, baseScreenH, candLayout.panes, cutoutSpec, effectiveCutoutType, candRot
           );
@@ -1132,6 +1259,7 @@
       return {
         activeOpen,
         rotation,
+        contentRotOffset,
         bodyW,
         bodyH,
         bodyD: spec.bodyD,
@@ -1150,20 +1278,8 @@
       };
     }
 
-    function getActiveDevices() {
-      if (state.mode === 'single') {
-        return DEVICES.filter(d => d.id === state.singleFoldId);
-      } else if (state.mode === 'vs_bar') {
-        return DEVICES.filter(d => d.id === state.vsFoldId || d.id === state.vsBarId);
-      } else if (state.mode === 'multi_fold') {
-        return DEVICES.filter(d => d.category === 'foldable' && state.multiFoldIds.includes(d.id));
-      } else {
-        return DEVICES.filter(d => state.multiAllIds.includes(d.id));
-      }
-    }
-
     /********************************************************************
-     * 6. UIレンダリング関数群（端末底辺の完全ベースライン揃え対応）
+     * 6. UIレンダリング関数群（順番並び替え ＆ 端末底辺の完全ベースライン揃え）
      ********************************************************************/
     function renderModeTabs() {
       const container = document.getElementById('modeTabs');
@@ -1194,6 +1310,7 @@
 
     function renderDeviceSelectors() {
       const container = document.getElementById('deviceSelectorArea');
+      const orderBar = document.getElementById('deviceOrderBar');
       const foldables = DEVICES.filter(d => d.category === 'foldable');
       const bars = DEVICES.filter(d => d.category === 'bar');
 
@@ -1322,6 +1439,36 @@
           });
         });
       }
+
+      // 現在表示中の端末の並び順バーを描画
+      const activeDevs = getActiveDevices();
+      if (activeDevs.length <= 1) {
+        orderBar.classList.add('hidden');
+        orderBar.innerHTML = '';
+      } else {
+        orderBar.classList.remove('hidden');
+        orderBar.innerHTML = `
+          <span class="text-[11px] theme-text-sub font-semibold mr-1">⇄ 表示順の並び替え:</span>
+          ${activeDevs.map((d, idx) => `
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg theme-subpanel border text-[11px]">
+              <span class="font-mono text-[10px] theme-text-sub">${idx + 1}.</span>
+              <span class="w-2 h-2 rounded-full" style="background:${d.color}"></span>
+              <span class="font-bold theme-text-main">${d.name}</span>
+              <button data-move-id="${d.id}" data-move-dir="-1" ${idx === 0 ? 'disabled' : ''}
+                      class="px-1 rounded hover:bg-indigo-500/20 ${idx === 0 ? 'opacity-25 cursor-not-allowed' : 'text-indigo-400 font-bold'}" title="左へ移動">◀</button>
+              <button data-move-id="${d.id}" data-move-dir="1" ${idx === activeDevs.length - 1 ? 'disabled' : ''}
+                      class="px-1 rounded hover:bg-indigo-500/20 ${idx === activeDevs.length - 1 ? 'opacity-25 cursor-not-allowed' : 'text-indigo-400 font-bold'}" title="右へ移動">▶</button>
+            </div>
+          `).join('')}
+        `;
+        orderBar.querySelectorAll('[data-move-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.moveId;
+            const dir = parseInt(btn.dataset.moveDir, 10);
+            moveActiveDeviceOrder(id, dir);
+          });
+        });
+      }
     }
 
     function getCutoutBadgeInfo(cutout) {
@@ -1364,9 +1511,6 @@
       `;
     }
 
-    /**
-     * 横幅寸法＆機種名ラベル（固定高さ h-[62px] + whitespace-nowrap により2行折り返しによる底辺ズレを完全防止）
-     */
     function buildHorizontalDimHTML(widthMm, widthPx, deviceName) {
       if (!state.showDimLines) {
         return `
@@ -1379,13 +1523,11 @@
       const arrowW = Math.max(46, Math.min(widthPx * 0.65, 150));
       return `
         <div class="mt-2 h-[62px] flex flex-col items-center justify-start select-none shrink-0">
-          <!-- 矢印自体は端末の横幅内に合わせて描画 -->
           <div class="flex items-center justify-center theme-arrow-head" style="width:${arrowW}px;">
             <span class="text-[10px] leading-none">◀</span>
             <div class="flex-1 h-[1.5px] theme-arrow-bar mx-0.5"></div>
             <span class="text-[10px] leading-none">▶</span>
           </div>
-          <!-- 寸法テキストと端末名は狭いスマホ幅でも折り返さないよう whitespace-nowrap で1行固定 -->
           <div class="font-mono font-bold text-xs md:text-sm theme-dim-label mt-0.5 whitespace-nowrap leading-tight">${label}</div>
           <div class="font-extrabold text-sm md:text-base theme-text-main tracking-tight mt-0.5 whitespace-nowrap leading-tight px-1">${deviceName}</div>
         </div>
@@ -1403,9 +1545,10 @@
         const hPx = p.h * scale;
 
         if (isCleanWallpaper) {
+          const deg = 135 + (p.contentRot || 0);
           return `
             <div class="device-transition absolute inset-0"
-                 style="background: linear-gradient(135deg, ${g1} 0%, ${g2} 52%, ${g3} 100%);">
+                 style="background: linear-gradient(${deg}deg, ${g1} 0%, ${g2} 52%, ${g3} 100%);">
             </div>
           `;
         }
@@ -1413,20 +1556,21 @@
         const boxColor = p.colorHex || device.color;
         let mangaGuideHTML = '';
         if (!state.isSplitContent && state.contentKey === 'manga_spread') {
+          const isVertManga = p.contentRot === 90 || p.contentRot === 270;
           mangaGuideHTML = `
-            <div class="absolute inset-0 flex pointer-events-none">
-              <div class="flex-1 m-1 border border-dashed border-white/30 rounded-sm flex items-center justify-center text-[10px] text-white/60">左P</div>
-              <div class="flex-1 m-1 border border-dashed border-white/30 rounded-sm flex items-center justify-center text-[10px] text-white/60">右P</div>
+            <div class="absolute inset-0 flex ${isVertManga ? 'flex-col' : 'flex-row'} pointer-events-none">
+              <div class="flex-1 m-1 border border-dashed border-white/30 rounded-sm flex items-center justify-center text-[10px] text-white/60">${isVertManga ? '上P' : '左P'}</div>
+              <div class="flex-1 m-1 border border-dashed border-white/30 rounded-sm flex items-center justify-center text-[10px] text-white/60">${isVertManga ? '下P' : '右P'}</div>
             </div>
           `;
         }
 
         return `
           <div class="device-transition absolute flex flex-col items-center justify-center text-center overflow-hidden select-none"
-               style="left:${leftPx}px; top:${topPx}px; width:${wPx}px; height:${hPx}px; background: linear-gradient(135deg, ${boxColor}44, ${boxColor}88); border: 1.5px solid ${boxColor};">
+               style="left:${leftPx}px; top:${topPx}px; width:${wPx}px; height:${hPx}px; background: linear-gradient(${135 + (p.contentRot || 0)}deg, ${boxColor}44, ${boxColor}88); border: 1.5px solid ${boxColor};">
             ${mangaGuideHTML}
             <div class="z-10 px-1.5 py-0.5 rounded bg-slate-950/75 backdrop-blur-sm">
-              ${m.layoutInfo.isSplit ? `<div class="text-[9px] font-bold text-indigo-200 whitespace-nowrap">${p.label}</div>` : ''}
+              <div class="text-[9px] font-bold text-indigo-200 whitespace-nowrap">${p.label}</div>
               <div class="text-[11px] font-extrabold text-white leading-tight whitespace-nowrap">${p.effInch.toFixed(2)}"</div>
               <div class="text-[9px] font-mono text-slate-200 whitespace-nowrap">${p.areaCm2.toFixed(1)} cm²</div>
             </div>
@@ -1479,7 +1623,6 @@
 
       const deviceCoreWithDimsHTML = `
         <div class="flex flex-col items-center">
-          <!-- 本体＋側面縦寸法（items-endで底辺を一致させる） -->
           <div class="flex items-end justify-center">
             ${!placeVertRight ? buildVerticalDimHTML(m.bodyH, bodyHpx, false) : ''}
 
@@ -1499,17 +1642,39 @@
             ${placeVertRight ? buildVerticalDimHTML(m.bodyH, bodyHpx, true) : ''}
           </div>
 
-          <!-- 下部固定高さラベル（2行折り返しによる底辺ズレを防止） -->
           ${buildHorizontalDimHTML(m.bodyW, bodyWpx, device.name)}
         </div>
       `;
 
-      // 「枠なしクリーン展示モード」
+      // 並び替え矢印ボタン群
+      const orderBtnsHTML = totalCount > 1 ? `
+        <div class="flex items-center gap-0.5 mr-1">
+          <button data-move-id="${device.id}" data-move-dir="-1" ${idx === 0 ? 'disabled' : ''}
+                  title="左へ並び替え"
+                  class="px-1 py-0.5 rounded theme-input border text-[10px] leading-none ${idx === 0 ? 'opacity-25 cursor-not-allowed' : 'hover:border-indigo-400 text-indigo-400 font-bold'}">◀</button>
+          <button data-move-id="${device.id}" data-move-dir="1" ${idx === totalCount - 1 ? 'disabled' : ''}
+                  title="右へ並び替え"
+                  class="px-1 py-0.5 rounded theme-input border text-[10px] leading-none ${idx === totalCount - 1 ? 'opacity-25 cursor-not-allowed' : 'hover:border-indigo-400 text-indigo-400 font-bold'}">▶</button>
+        </div>
+      ` : '';
+
+      // 端末個別のコンテンツ90°回転トグル
+      const contentRotBtnHTML = `
+        <button data-toggle-crot="${device.id}" title="この端末のコンテンツを90°回転"
+                class="px-1.5 py-0.5 rounded font-mono text-[10px] border transition leading-none ${
+                  m.contentRotOffset === 90
+                    ? 'bg-pink-600 text-white border-pink-500 font-bold'
+                    : 'theme-input hover:opacity-80'
+                }">映像${m.contentRotOffset === 90 ? '90°' : '0°'}</button>
+      `;
+
+      // 「枠なしクリーン表示」がONのとき
       if (state.cleanShowcase) {
         return `
           <div class="flex flex-col items-center px-2">
             <!-- ミニ操作ピル（高さ固定 h-[30px]） -->
-            <div class="mb-3 h-[30px] flex items-center gap-1.5 theme-panel border px-2.5 rounded-full text-[11px] shadow-sm shrink-0">
+            <div class="mb-3 h-[30px] flex items-center gap-1 theme-panel border px-2 rounded-full text-[11px] shadow-sm shrink-0">
+              ${orderBtnsHTML}
               ${device.category === 'foldable' ? `
                 <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded-full font-medium leading-none ${
                   m.activeOpen ? 'bg-indigo-600 text-white' : 'theme-input'
@@ -1521,13 +1686,14 @@
                           m.rotation === rot ? 'bg-indigo-600 text-white font-bold' : 'theme-text-sub'
                         }">${rot}°</button>
               `).join('')}
+              ${contentRotBtnHTML}
             </div>
             ${deviceCoreWithDimsHTML}
           </div>
         `;
       }
 
-      // 通常カードモード（サジェスト領域も固定高さ h-[28px] を確保し、カード間の本体底辺ズレを完全防止）
+      // 通常の「枠あり」カード表示モード
       const splitSummaryText = m.layoutInfo.isSplit
         ? `A:${m.layoutInfo.panes[0].effInch.toFixed(1)}" + B:${m.layoutInfo.panes[1].effInch.toFixed(1)}"`
         : `実効 ${m.effectiveInch.toFixed(2)}"`;
@@ -1546,24 +1712,27 @@
         `;
 
       return `
-        <div class="flex flex-col items-center theme-card border rounded-2xl p-4 shadow-md min-w-[235px]">
+        <div class="flex flex-col items-center theme-card border rounded-2xl p-4 shadow-md min-w-[245px]">
 
-          <div class="w-full flex items-center justify-between gap-2 mb-2 h-[22px] shrink-0">
-            <div class="flex items-center gap-1.5">
+          <!-- カード上部：並び替えボタン ＆ 機種名 ＆ 重量 -->
+          <div class="w-full flex items-center justify-between gap-1.5 mb-2 h-[24px] shrink-0">
+            <div class="flex items-center gap-1">
+              ${orderBtnsHTML}
               <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${device.color}"></span>
               <span class="font-bold text-xs md:text-sm theme-text-main whitespace-nowrap">${device.name}</span>
             </div>
-            <span class="text-[11px] font-mono theme-text-sub">${device.weightG}g</span>
+            <span class="text-[11px] font-mono theme-text-sub whitespace-nowrap">${device.weightG}g</span>
           </div>
 
+          <!-- 個別：開閉 ＆ 端末4方向回転 ＆ 映像回転ボタン -->
           <div class="w-full flex items-center justify-between gap-1 mb-3 pb-2 border-b border-slate-500/20 text-[11px] h-[34px] shrink-0">
             ${device.category === 'foldable' ? `
               <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded font-medium transition whitespace-nowrap ${
                 m.activeOpen ? 'bg-indigo-600 text-white' : 'theme-input border'
               }">
-                ${m.activeOpen ? '展開中 (開)' : '折りたたみ (閉)'}
+                ${m.activeOpen ? '開' : '閉'}
               </button>
-            ` : `<span class="px-2 py-0.5 rounded theme-input text-[10px] whitespace-nowrap">通常バー型</span>`}
+            ` : `<span class="px-1.5 py-0.5 rounded theme-input text-[10px] whitespace-nowrap">通常型</span>`}
 
             <div class="flex items-center gap-0.5">
               ${[0, 90, 180, 270].map(rot => `
@@ -1574,6 +1743,7 @@
                             : 'theme-input hover:opacity-80'
                         }">${rot}°</button>
               `).join('')}
+              ${contentRotBtnHTML}
             </div>
           </div>
 
@@ -1696,6 +1866,23 @@
           updateViewportAndScale(true);
         });
       });
+
+      container.querySelectorAll('[data-toggle-crot]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.toggleCrot;
+          const cur = state.deviceStates[id].contentRotOffset || 0;
+          state.deviceStates[id].contentRotOffset = cur === 90 ? 0 : 90;
+          renderAll();
+        });
+      });
+
+      container.querySelectorAll('[data-move-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.moveId;
+          const dir = parseInt(btn.dataset.moveDir, 10);
+          moveActiveDeviceOrder(id, dir);
+        });
+      });
     }
 
     function renderAreaChartAndTable(activeListWithMetrics) {
@@ -1704,11 +1891,11 @@
       const badge = document.getElementById('chartContentBadge');
 
       if (state.isSplitContent) {
-        const pA = CONTENT_PRESETS[state.splitContentA]?.shortLabel || 'A';
-        const pB = CONTENT_PRESETS[state.splitContentB]?.shortLabel || 'B';
+        const pA = getRotatedAspectAndLabel(state.splitContentA, state.splitRotA).shortLabel;
+        const pB = getRotatedAspectAndLabel(state.splitContentB, state.splitRotB).shortLabel;
         badge.textContent = `2画面分割 (${pA} + ${pB})`;
       } else {
-        badge.textContent = CONTENT_PRESETS[state.contentKey]?.label || '16:9 動画';
+        badge.textContent = getRotatedAspectAndLabel(state.contentKey, state.contentRotation).shortLabel;
       }
 
       const maxAreaRef = 215;
@@ -1766,7 +1953,7 @@
                 <span class="w-2 h-2 rounded-full shrink-0" style="background:${device.color}"></span>
                 <div>
                   <div class="font-bold theme-text-main">${device.name}</div>
-                  <div class="text-[10px] theme-text-sub">${device.category === 'foldable' ? (m.activeOpen ? '展開時' : '閉じた状態') : '通常スマホ'} / ${m.rotation}°</div>
+                  <div class="text-[10px] theme-text-sub">${device.category === 'foldable' ? (m.activeOpen ? '展開時' : '閉じた状態') : '通常スマホ'} / 端末${m.rotation}°</div>
                 </div>
               </div>
             </td>
@@ -1802,7 +1989,12 @@
       const activeDevices = getActiveDevices();
       const activeListWithMetrics = activeDevices.map(device => {
         const dState = state.deviceStates[device.id];
-        const metrics = computeDeviceMetrics(device, dState.isOpen, dState.rotation);
+        const metrics = computeDeviceMetrics(
+          device,
+          dState.isOpen,
+          dState.rotation,
+          dState.contentRotOffset || 0
+        );
         return { device, metrics };
       });
 
@@ -1812,89 +2004,160 @@
     }
 
     /********************************************************************
-     * 7. 最適化PNG画像エクスポーター（全端末ベースライン統一・高解像度出力）
+     * 7. 最適化PNG画像エクスポーター
+     *    「枠あり」(!state.cleanShowcase) のときはカード枠＋ヘッダー＋フッター付きで出力
+     *    「枠なし」(state.cleanShowcase) のときは今まで通りクリーン状態で出力
      ********************************************************************/
     function exportOptimizedComparisonImage() {
       const activeDevices = getActiveDevices();
       const items = activeDevices.map(device => {
         const dState = state.deviceStates[device.id];
-        const metrics = computeDeviceMetrics(device, dState.isOpen, dState.rotation);
+        const metrics = computeDeviceMetrics(
+          device,
+          dState.isOpen,
+          dState.rotation,
+          dState.contentRotOffset || 0
+        );
         return { device, metrics };
       });
       if (items.length === 0) return;
 
       const theme = document.getElementById('exportBgTheme').value;
       const isLight = theme === 'light';
+      const isFramed = !state.cleanShowcase;
       const isCleanWallpaper = !state.isSplitContent && state.contentKey === 'wallpaper_clean';
 
-      const pxPerMm = 4.2;
-      const sideDimSpace = state.showDimLines ? 76 : 24;
-      const bottomLabelSpace = state.showDimLines ? 115 : 75;
+      const pxPerMm = 3.8;
+      const sideDimSpace = state.showDimLines ? 74 : 20;
+      const bottomDimBlockH = state.showDimLines ? 98 : 48;
+
+      const cardPadX = isFramed ? 28 : 0;
+      const cardHeaderH = isFramed ? 96 : 0;
+      const cardFooterH = isFramed ? 156 : 0;
+
       const topHeaderSpace = 72;
-      const gapBetweenDevices = 72;
-      const outerPadX = 64;
+      const gapBetweenItems = isFramed ? 40 : 68;
+      const outerPadX = 56;
 
       let totalWidthPx = outerPadX * 2;
       let maxDeviceHeightPx = 0;
 
+      const itemSlots = items.map(({ device, metrics: m }, idx) => {
+        const bodyWpx = m.bodyW * pxPerMm;
+        const bodyHpx = m.bodyH * pxPerMm;
+        const placeVertRight = (items.length === 2 && idx === 1);
+        const coreVisualW = bodyWpx + sideDimSpace;
+        const minCardW = isFramed ? 360 : (device.name.length * 14);
+        const slotW = Math.max(coreVisualW + cardPadX * 2, minCardW);
+        if (bodyHpx > maxDeviceHeightPx) maxDeviceHeightPx = bodyHpx;
+        return { bodyWpx, bodyHpx, placeVertRight, coreVisualW, slotW };
+      });
+
       if (state.layout === 'side') {
-        items.forEach(({ device, metrics: m }, idx) => {
-          const wPx = Math.max(m.bodyW * pxPerMm, device.name.length * 14);
-          const hPx = m.bodyH * pxPerMm;
-          totalWidthPx += wPx + sideDimSpace;
-          if (idx < items.length - 1) totalWidthPx += gapBetweenDevices;
-          if (hPx > maxDeviceHeightPx) maxDeviceHeightPx = hPx;
+        itemSlots.forEach((s, idx) => {
+          totalWidthPx += s.slotW;
+          if (idx < itemSlots.length - 1) totalWidthPx += gapBetweenItems;
         });
       } else {
         const maxW = Math.max(...items.map(x => x.metrics.bodyW * pxPerMm));
         maxDeviceHeightPx = Math.max(...items.map(x => x.metrics.bodyH * pxPerMm));
-        totalWidthPx = Math.max(720, maxW + outerPadX * 2 + 120);
+        totalWidthPx = Math.max(760, maxW + outerPadX * 2 + 120);
       }
 
-      const totalHeightPx = topHeaderSpace + maxDeviceHeightPx + bottomLabelSpace + 30;
+      const totalHeightPx = topHeaderSpace + cardHeaderH + maxDeviceHeightPx + bottomDimBlockH + cardFooterH + 48;
 
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(totalWidthPx);
       canvas.height = Math.round(totalHeightPx);
       const ctx = canvas.getContext('2d');
 
-      ctx.fillStyle = isLight ? '#ffffff' : '#0b1120';
+      ctx.fillStyle = isLight ? '#f1f5f9' : '#0b1120';
+      if (!isFramed && isLight) ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.fillStyle = isLight ? '#334155' : '#94a3b8';
       ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
       ctx.textAlign = 'left';
       const modeTitle = state.isSplitContent
-        ? `2画面分割 (${CONTENT_PRESETS[state.splitContentA].shortLabel} + ${CONTENT_PRESETS[state.splitContentB].shortLabel})`
-        : CONTENT_PRESETS[state.contentKey].label;
-      ctx.fillText(`Fold Scale ｜ ${modeTitle}`, 32, 40);
+        ? `2画面分割 (${getRotatedAspectAndLabel(state.splitContentA, state.splitRotA).shortLabel} + ${getRotatedAspectAndLabel(state.splitContentB, state.splitRotB).shortLabel})`
+        : getRotatedAspectAndLabel(state.contentKey, state.contentRotation).shortLabel;
+      ctx.fillText(`Fold Scale ｜ ${modeTitle}`, 32, 42);
 
-      // 全端末共通の底辺Y座標（ベースライン）
-      const baselineY = topHeaderSpace + maxDeviceHeightPx;
+      const baselineY = topHeaderSpace + cardHeaderH + maxDeviceHeightPx;
 
       if (state.layout === 'side') {
         let cursorX = outerPadX;
 
         items.forEach(({ device, metrics: m }, idx) => {
-          const bodyWpx = m.bodyW * pxPerMm;
-          const bodyHpx = m.bodyH * pxPerMm;
+          const slot = itemSlots[idx];
+          const { bodyWpx, bodyHpx, placeVertRight, slotW } = slot;
           const screenWpx = m.screenW * pxPerMm;
           const screenHpx = m.screenH * pxPerMm;
-          const slotW = Math.max(bodyWpx, device.name.length * 14);
 
-          const placeVertRight = (items.length === 2 && idx === 1);
-          const phoneX = (placeVertRight ? cursorX : cursorX + sideDimSpace) + (slotW - bodyWpx) / 2;
+          const cardX = cursorX;
+          const cardTopY = baselineY - bodyHpx - cardHeaderH;
+          const cardTotalH = cardHeaderH + bodyHpx + bottomDimBlockH + cardFooterH;
+
+          if (isFramed) {
+            const cardBg = isLight ? '#ffffff' : '#0f172a';
+            const cardBorder = isLight ? '#cbd5e1' : '#1e293b';
+            drawRoundedRect(ctx, cardX, cardTopY, slotW, cardTotalH, 24, cardBg, cardBorder, 2);
+
+            const headerPadX = cardX + 22;
+            ctx.beginPath();
+            ctx.arc(headerPadX + 6, cardTopY + 26, 6, 0, Math.PI * 2);
+            ctx.fillStyle = device.color;
+            ctx.fill();
+
+            ctx.fillStyle = isLight ? '#0f172a' : '#f8fafc';
+            ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(device.name, headerPadX + 20, cardTopY + 32);
+
+            ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
+            ctx.font = '15px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${device.weightG}g`, cardX + slotW - 22, cardTopY + 32);
+
+            const stateLabel = device.category === 'foldable' ? (m.activeOpen ? '展開中 (開)' : '折りたたみ (閉)') : '通常バー型';
+            const stateBg = m.activeOpen ? '#4f46e5' : (isLight ? '#e2e8f0' : '#1e293b');
+            const stateFg = m.activeOpen ? '#ffffff' : (isLight ? '#334155' : '#cbd5e1');
+            drawRoundedRect(ctx, headerPadX, cardTopY + 46, 108, 28, 7, stateBg, null, 0);
+            ctx.fillStyle = stateFg;
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(stateLabel, headerPadX + 54, cardTopY + 65);
+
+            const rotText = `端末${m.rotation}° / 映像${m.contentRotOffset || 0}°`;
+            drawRoundedRect(ctx, cardX + slotW - 152, cardTopY + 46, 130, 28, 7, isLight ? '#f1f5f9' : '#1e293b', isLight ? '#cbd5e1' : '#334155', 1);
+            ctx.fillStyle = isLight ? '#0f172a' : '#e2e8f0';
+            ctx.font = 'bold 12px monospace';
+            ctx.fillText(rotText, cardX + slotW - 87, cardTopY + 65);
+
+            ctx.strokeStyle = isLight ? '#e2e8f0' : '#1e293b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 18, cardTopY + 84);
+            ctx.lineTo(cardX + slotW - 18, cardTopY + 84);
+            ctx.stroke();
+          }
+
+          const totalCoreW = bodyWpx + (state.showDimLines ? sideDimSpace : 0);
+          const coreStartX = cardX + (slotW - totalCoreW) / 2;
+          const phoneX = state.showDimLines
+            ? (placeVertRight ? coreStartX : coreStartX + sideDimSpace)
+            : (cardX + (slotW - bodyWpx) / 2);
           const phoneY = baselineY - bodyHpx;
 
-          // 本体外枠
-          drawRoundedRect(ctx, phoneX, phoneY, bodyWpx, bodyHpx, 24, '#1e293b', isCleanWallpaper ? '#334155' : device.color, 4);
+          // 1. 本体外枠
+          drawRoundedRect(ctx, phoneX, phoneY, bodyWpx, bodyHpx, 22, '#1e293b', isCleanWallpaper ? '#334155' : device.color, 3.5);
 
-          // ディスプレイ黒帯領域
+          // 2. ディスプレイ黒帯領域
           const screenX = phoneX + (bodyWpx - screenWpx) / 2;
           const screenY = phoneY + (bodyHpx - screenHpx) / 2;
-          drawRoundedRect(ctx, screenX, screenY, screenWpx, screenHpx, 16, '#020617', '#1e293b', 1);
+          drawRoundedRect(ctx, screenX, screenY, screenWpx, screenHpx, 15, '#020617', '#1e293b', 1);
 
-          // 各ペイン描画
+          // 3. 各ペイン描画
           m.layoutInfo.panes.forEach(p => {
             const pX = screenX + p.x * pxPerMm;
             const pY = screenY + p.y * pxPerMm;
@@ -1918,38 +2181,29 @@
 
             if (!isCleanWallpaper) {
               ctx.strokeStyle = boxColor;
-              ctx.lineWidth = 2.5;
+              ctx.lineWidth = 2.2;
               ctx.strokeRect(pX, pY, pW, pH);
 
-              const pillW = Math.min(pW - 12, 165);
-              const pillH = m.layoutInfo.isSplit ? 62 : 52;
+              const pillW = Math.min(pW - 10, 160);
+              const pillH = 58;
               const pillX = pX + (pW - pillW) / 2;
               const pillY = pY + (pH - pillH) / 2;
-              drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 10, 'rgba(15, 23, 42, 0.82)', 'rgba(255,255,255,0.2)', 1);
+              drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 9, 'rgba(15, 23, 42, 0.82)', 'rgba(255,255,255,0.2)', 1);
 
-              ctx.fillStyle = '#ffffff';
               ctx.textAlign = 'center';
-              if (m.layoutInfo.isSplit) {
-                ctx.font = 'bold 13px sans-serif';
-                ctx.fillStyle = '#a5b4fc';
-                ctx.fillText(p.label, pX + pW / 2, pillY + 18);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 16px sans-serif';
-                ctx.fillText(`実効 ${p.effInch.toFixed(2)}"`, pX + pW / 2, pillY + 38);
-                ctx.fillStyle = '#cbd5e1';
-                ctx.font = '13px monospace';
-                ctx.fillText(`${p.areaCm2.toFixed(1)} cm²`, pX + pW / 2, pillY + 54);
-              } else {
-                ctx.font = 'bold 17px sans-serif';
-                ctx.fillText(`実効 ${p.effInch.toFixed(2)}"`, pX + pW / 2, pillY + 23);
-                ctx.fillStyle = '#cbd5e1';
-                ctx.font = '14px monospace';
-                ctx.fillText(`${p.areaCm2.toFixed(1)} cm²`, pX + pW / 2, pillY + 43);
-              }
+              ctx.font = 'bold 12px sans-serif';
+              ctx.fillStyle = '#a5b4fc';
+              ctx.fillText(p.label, pX + pW / 2, pillY + 17);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 15px sans-serif';
+              ctx.fillText(`実効 ${p.effInch.toFixed(2)}"`, pX + pW / 2, pillY + 36);
+              ctx.fillStyle = '#cbd5e1';
+              ctx.font = '12px monospace';
+              ctx.fillText(`${p.areaCm2.toFixed(1)} cm²`, pX + pW / 2, pillY + 51);
             }
           });
 
-          // ヒンジ折り目
+          // 4. ヒンジ折り目
           if (m.activeOpen) {
             ctx.save();
             ctx.strokeStyle = 'rgba(255,255,255,0.22)';
@@ -1967,10 +2221,10 @@
             ctx.restore();
           }
 
-          // パンチホール描画
+          // 5. パンチホール描画
           if (state.showCutout && m.cutout.type !== 'bezel') {
-            const holeW = Math.max(10, m.cutout.hw * pxPerMm);
-            const holeH = Math.max(10, m.cutout.hh * pxPerMm);
+            const holeW = Math.max(9, m.cutout.hw * pxPerMm);
+            const holeH = Math.max(9, m.cutout.hh * pxPerMm);
             const holeX = screenX + m.cutout.hx * pxPerMm - holeW / 2;
             const holeY = screenY + m.cutout.hy * pxPerMm - holeH / 2;
 
@@ -1991,36 +2245,36 @@
             drawRoundedRect(ctx, holeX, holeY, holeW, holeH, Math.min(holeW, holeH) / 2, holeFill, holeStroke, 2.5);
           }
 
-          // 縦横寸法矢印と1行機種名ラベル
+          // 6. 縦横寸法矢印と1行機種名ラベル
           const textColor = isLight ? '#0f172a' : '#f8fafc';
           const dimColor = isLight ? '#0f172a' : '#34d399';
           const arrowColor = isLight ? '#475569' : '#94a3b8';
 
           if (state.showDimLines) {
-            const hArrowW = Math.min(bodyWpx * 0.6, 180);
+            const hArrowW = Math.min(bodyWpx * 0.65, 170);
             const hArrowX1 = phoneX + (bodyWpx - hArrowW) / 2;
             const hArrowX2 = hArrowX1 + hArrowW;
-            const hArrowY = baselineY + 18;
+            const hArrowY = baselineY + 16;
             drawDoubleArrow(ctx, hArrowX1, hArrowY, hArrowX2, hArrowY, arrowColor);
 
             ctx.fillStyle = dimColor;
-            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, monospace';
+            ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(formatDimension(m.bodyW), phoneX + bodyWpx / 2, baselineY + 44);
+            ctx.fillText(formatDimension(m.bodyW), phoneX + bodyWpx / 2, baselineY + 40);
 
-            const vArrowH = Math.min(bodyHpx * 0.45, 180);
+            const vArrowH = Math.min(bodyHpx * 0.45, 170);
             const vArrowY2 = baselineY - 8;
             const vArrowY1 = vArrowY2 - vArrowH;
-            const vArrowX = placeVertRight ? (phoneX + bodyWpx + 18) : (phoneX - 18);
+            const vArrowX = placeVertRight ? (phoneX + bodyWpx + 16) : (phoneX - 16);
             drawDoubleArrow(ctx, vArrowX, vArrowY1, vArrowX, vArrowY2, arrowColor);
 
             ctx.save();
-            const textX = placeVertRight ? (phoneX + bodyWpx + 42) : (phoneX - 42);
+            const textX = placeVertRight ? (phoneX + bodyWpx + 38) : (phoneX - 38);
             const textY = (vArrowY1 + vArrowY2) / 2;
             ctx.translate(textX, textY);
             ctx.rotate(placeVertRight ? Math.PI / 2 : -Math.PI / 2);
             ctx.fillStyle = dimColor;
-            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, monospace';
+            ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(formatDimension(m.bodyH), 0, 0);
@@ -2028,12 +2282,78 @@
           }
 
           ctx.fillStyle = textColor;
-          ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          ctx.font = '900 22px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
           ctx.textAlign = 'center';
-          const nameY = state.showDimLines ? (baselineY + 76) : (baselineY + 38);
+          const nameY = state.showDimLines ? (baselineY + 70) : (baselineY + 32);
           ctx.fillText(device.name, phoneX + bodyWpx / 2, nameY);
 
-          cursorX += slotW + sideDimSpace + gapBetweenDevices;
+          // 7. 「枠あり」モード時のカード下部フッター描画
+          if (isFramed) {
+            const footerTopY = baselineY + bottomDimBlockH;
+            const fPadLeft = cardX + 22;
+            const fPadRight = cardX + slotW - 22;
+            const fInnerW = fPadRight - fPadLeft;
+
+            ctx.strokeStyle = isLight ? '#e2e8f0' : '#1e293b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(fPadLeft, footerTopY);
+            ctx.lineTo(fPadRight, footerTopY);
+            ctx.stroke();
+
+            const splitSummaryText = m.layoutInfo.isSplit
+              ? `A:${m.layoutInfo.panes[0].effInch.toFixed(1)}" + B:${m.layoutInfo.panes[1].effInch.toFixed(1)}"`
+              : `実効 ${m.effectiveInch.toFixed(2)}"`;
+
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillStyle = isLight ? '#334155' : '#cbd5e1';
+            ctx.textAlign = 'left';
+            ctx.fillText(`表示: ${splitSummaryText}`, fPadLeft, footerTopY + 26);
+
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#6366f1';
+            ctx.fillText(`厚: ${m.bodyD}mm`, fPadRight, footerTopY + 26);
+
+            drawRoundedRect(ctx, fPadLeft, footerTopY + 36, fInnerW, 10, 5, isLight ? '#e2e8f0' : '#1e293b', null, 0);
+            const barFillW = Math.max(12, Math.min(fInnerW, (m.bodyD / 14) * fInnerW));
+            drawRoundedRect(ctx, fPadLeft, footerTopY + 36, barFillW, 10, 5, device.color, null, 0);
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = isLight ? '#475569' : '#94a3b8';
+            ctx.font = 'bold 13px monospace';
+            ctx.fillText(`黒帯率: ${m.blackBarRatioPercent.toFixed(1)}%`, fPadLeft, footerTopY + 72);
+
+            const cBadge = getCutoutBadgeInfo(m.cutout);
+            let badgeBg = 'rgba(16, 185, 129, 0.18)';
+            let badgeFg = '#10b981';
+            if (m.cutout.status === 'safe_bezel') { badgeBg = 'rgba(6, 182, 212, 0.18)'; badgeFg = '#06b6d4'; }
+            else if (m.cutout.status === 'udc_overlap') { badgeBg = 'rgba(245, 158, 11, 0.18)'; badgeFg = '#f59e0b'; }
+            else if (m.cutout.status === 'intruding') { badgeBg = 'rgba(244, 63, 94, 0.18)'; badgeFg = '#f43f5e'; }
+
+            const badgeW = Math.min(185, ctx.measureText(cBadge.label).width + 22);
+            drawRoundedRect(ctx, fPadRight - badgeW, footerTopY + 54, badgeW, 25, 6, badgeBg, badgeFg, 1);
+            ctx.fillStyle = badgeFg;
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(cBadge.label, fPadRight - badgeW / 2, footerTopY + 71);
+
+            const sugY = footerTopY + 92;
+            if (m.suggestedAngle !== null) {
+              drawRoundedRect(ctx, fPadLeft, sugY, fInnerW, 34, 8, 'rgba(16, 185, 129, 0.15)', '#10b981', 1);
+              ctx.fillStyle = '#10b981';
+              ctx.font = 'bold 13px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(`💡 ${m.suggestedAngle}° に回すと黒帯に隠れて干渉ゼロ`, cardX + slotW / 2, sugY + 22);
+            } else {
+              drawRoundedRect(ctx, fPadLeft, sugY, fInnerW, 34, 8, isLight ? '#f8fafc' : '#020617', isLight ? '#e2e8f0' : '#1e293b', 1);
+              ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
+              ctx.font = '13px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('✓ 現在の向きで最適表示中', cardX + slotW / 2, sugY + 22);
+            }
+          }
+
+          cursorX += slotW + gapBetweenItems;
         });
       } else {
         const sorted = [...items].sort((a, b) => (b.metrics.bodyW * b.metrics.bodyH) - (a.metrics.bodyW * a.metrics.bodyH));
@@ -2056,7 +2376,7 @@
 
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-      link.download = `FoldScale-comparison-${timestamp}.png`;
+      link.download = `FoldScale-${isFramed ? 'framed' : 'clean'}-${timestamp}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     }
@@ -2107,14 +2427,12 @@
      ********************************************************************/
     window.addEventListener('resize', () => updateViewportAndScale(true));
 
-    // ダーク / ライト テーマ切替
     document.getElementById('btnThemeToggle').addEventListener('click', () => {
       state.theme = state.theme === 'dark' ? 'light' : 'dark';
       syncControlsWithState();
       renderAll();
     });
 
-    // 保存状態リセットボタン
     document.getElementById('btnResetStorage').addEventListener('click', () => {
       localStorage.removeItem(STORAGE_KEY);
       const fresh = createDefaultState();
@@ -2123,7 +2441,6 @@
       updateViewportAndScale(true);
     });
 
-    // 単一表示 vs 2画面分割モード切替
     document.getElementById('btnModeSingleContent').addEventListener('click', () => {
       state.isSplitContent = false;
       syncControlsWithState();
@@ -2132,6 +2449,26 @@
 
     document.getElementById('btnModeSplitContent').addEventListener('click', () => {
       state.isSplitContent = true;
+      syncControlsWithState();
+      renderAll();
+    });
+
+    document.querySelectorAll('#contentRotationBtns button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.contentRotation = parseInt(btn.dataset.crot, 10);
+        syncControlsWithState();
+        renderAll();
+      });
+    });
+
+    document.getElementById('btnRotateSplitA').addEventListener('click', () => {
+      state.splitRotA = state.splitRotA === 90 ? 0 : 90;
+      syncControlsWithState();
+      renderAll();
+    });
+
+    document.getElementById('btnRotateSplitB').addEventListener('click', () => {
+      state.splitRotB = state.splitRotB === 90 ? 0 : 90;
       syncControlsWithState();
       renderAll();
     });
@@ -2185,7 +2522,6 @@
 
     document.getElementById('contentSelect').addEventListener('change', (e) => {
       state.contentKey = e.target.value;
-      document.getElementById('contentDesc').textContent = CONTENT_PRESETS[state.contentKey].desc;
       renderAll();
     });
 
