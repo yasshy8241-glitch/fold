@@ -49,31 +49,12 @@
       transition: background-color 0.25s ease, color 0.25s ease;
     }
 
-    .theme-header {
-      background-color: var(--bg-header);
-      border-color: var(--border-main);
-    }
-    .theme-panel {
-      background-color: var(--bg-panel);
-      border-color: var(--border-main);
-    }
-    .theme-subpanel {
-      background-color: var(--bg-subpanel);
-      border-color: var(--border-main);
-    }
-    .theme-canvas {
-      background-color: var(--bg-canvas);
-      border-color: var(--border-main);
-    }
-    .theme-card {
-      background-color: var(--bg-card);
-      border-color: var(--border-main);
-    }
-    .theme-input {
-      background-color: var(--bg-input);
-      border-color: var(--border-sub);
-      color: var(--text-main);
-    }
+    .theme-header { background-color: var(--bg-header); border-color: var(--border-main); }
+    .theme-panel { background-color: var(--bg-panel); border-color: var(--border-main); }
+    .theme-subpanel { background-color: var(--bg-subpanel); border-color: var(--border-main); }
+    .theme-canvas { background-color: var(--bg-canvas); border-color: var(--border-main); }
+    .theme-card { background-color: var(--bg-card); border-color: var(--border-main); }
+    .theme-input { background-color: var(--bg-input); border-color: var(--border-sub); color: var(--text-main); }
     .theme-text-main { color: var(--text-main); }
     .theme-text-sub { color: var(--text-sub); }
     .theme-dim-label { color: var(--text-dim); }
@@ -186,7 +167,8 @@
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-base md:text-xl font-black tracking-tight theme-text-main">Fold Scale</h1>
-              <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 text-[10px] font-bold">v2.0</span>
+              <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 text-[10px] font-bold">v2.1</span>
+              <span id="saveStatusBadge" class="text-[10px] text-emerald-500 font-medium hidden sm:inline">✓ 自動保存ON</span>
             </div>
             <p class="text-[10px] theme-text-sub hidden sm:block">折りたたみ＆通常スマホ 実寸・2画面分割・パンチホール比較</p>
           </div>
@@ -225,6 +207,11 @@
               <span>📷 画像保存 (PNG)</span>
             </button>
           </div>
+
+          <!-- 保存状態リセットボタン -->
+          <button id="btnResetStorage" title="保存された設定を初期状態に戻します" class="px-2 py-1.5 rounded-lg theme-input border text-[11px] theme-text-sub hover:text-rose-400 transition">
+            ↺ リセット
+          </button>
         </div>
       </div>
 
@@ -411,9 +398,9 @@
         <span id="canvasScaleInfo" class="theme-text-sub font-mono"></span>
       </div>
 
-      <!-- 端末描画キャンバス -->
+      <!-- 端末描画キャンバス（items-end と下部固定高で端末底辺を完全統一） -->
       <section id="canvasSection" class="theme-canvas border rounded-2xl p-4 md:p-8 min-h-[420px] overflow-x-auto flex items-center justify-center shadow-inner">
-        <div id="comparisonCanvas" class="flex flex-wrap items-end justify-center gap-8 mx-auto">
+        <div id="comparisonCanvas" class="flex flex-wrap items-end justify-center gap-x-8 gap-y-10 mx-auto">
           <!-- JSで描画 -->
         </div>
       </section>
@@ -459,6 +446,8 @@
     /********************************************************************
      * 1. 全8機種のマスターデータ定義（ヒンジ縦・0°基準に正規化済み）
      ********************************************************************/
+    const STORAGE_KEY = 'fold_scale_saved_state_v2';
+
     const DEVICES = [
       {
         id: 'zfold8',
@@ -637,44 +626,170 @@
     };
 
     /********************************************************************
-     * 2. アプリケーション状態（State）
+     * 2. アプリケーション状態（State）＆ localStorage 永続化エンジン
      ********************************************************************/
-    const state = {
-      theme: 'dark', // 'dark' | 'light'
-      profileMode: 'auto',
-      activeProfile: 'pc_wide',
-      autoFitScale: true,
-      mode: 'multi_fold',
-      scalePxPerMm: 2.1,
-      layout: 'side',
-      // 単一コンテンツ or 2画面分割モード
-      isSplitContent: false,
-      contentKey: 'video_16_9',
-      splitContentA: 'video_16_9',
-      splitContentB: 'fullscreen',
-      splitDirection: 'auto', // 'auto' | 'horizontal' | 'vertical'
-      splitRatioMode: '50_50', // '50_50' | '70_30' | 'fit_a_16_9'
-      // カメラ＆寸法表示オプション
-      showCutout: true,
-      useUdcForIphoneDuo: true,
-      showDimLines: true,
-      dimUnit: 'cm_mm',
-      cleanShowcase: false,
-      // 選択中の端末ID
-      singleFoldId: 'zfold8',
-      vsBarId: 'iphone18pm',
-      vsFoldId: 'zfold8',
-      multiFoldIds: ['zfold8', 'zfold8u'],
-      multiAllIds: ['zfold8', 'zfold8u', 'iphoneduo', 'pixel11pf', 'iphone18pm'],
-      deviceStates: {}
-    };
+    function createDefaultState() {
+      const ds = {};
+      DEVICES.forEach(d => {
+        ds[d.id] = {
+          isOpen: d.category === 'foldable',
+          rotation: 0
+        };
+      });
 
-    DEVICES.forEach(d => {
-      state.deviceStates[d.id] = {
-        isOpen: d.category === 'foldable',
-        rotation: 0
+      return {
+        theme: 'dark',
+        profileMode: 'auto',
+        activeProfile: 'pc_wide',
+        autoFitScale: true,
+        mode: 'multi_all',
+        scalePxPerMm: 1.8,
+        layout: 'side',
+        isSplitContent: false,
+        contentKey: 'video_16_9',
+        splitContentA: 'video_16_9',
+        splitContentB: 'fullscreen',
+        splitDirection: 'auto',
+        splitRatioMode: '50_50',
+        showCutout: true,
+        useUdcForIphoneDuo: true,
+        showDimLines: true,
+        dimUnit: 'mm',
+        cleanShowcase: true,
+        singleFoldId: 'zfold8',
+        vsBarId: 'iphone18pm',
+        vsFoldId: 'zfold8',
+        multiFoldIds: ['zfold8', 'zfold8u'],
+        multiAllIds: ['zfold8', 'zfold8u', 'iphoneduo', 'pixel11pf', 'iphone18pm'],
+        deviceStates: ds
       };
-    });
+    }
+
+    const state = createDefaultState();
+
+    function saveStateToStorage() {
+      try {
+        const payload = {
+          theme: state.theme,
+          profileMode: state.profileMode,
+          autoFitScale: state.autoFitScale,
+          mode: state.mode,
+          scalePxPerMm: state.scalePxPerMm,
+          layout: state.layout,
+          isSplitContent: state.isSplitContent,
+          contentKey: state.contentKey,
+          splitContentA: state.splitContentA,
+          splitContentB: state.splitContentB,
+          splitDirection: state.splitDirection,
+          splitRatioMode: state.splitRatioMode,
+          showCutout: state.showCutout,
+          useUdcForIphoneDuo: state.useUdcForIphoneDuo,
+          showDimLines: state.showDimLines,
+          dimUnit: state.dimUnit,
+          cleanShowcase: state.cleanShowcase,
+          singleFoldId: state.singleFoldId,
+          vsBarId: state.vsBarId,
+          vsFoldId: state.vsFoldId,
+          multiFoldIds: state.multiFoldIds,
+          multiAllIds: state.multiAllIds,
+          deviceStates: state.deviceStates
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (err) {
+        console.warn('localStorageへの保存に失敗しました:', err);
+      }
+    }
+
+    function loadStateFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return;
+
+        const simpleKeys = [
+          'theme', 'profileMode', 'autoFitScale', 'mode', 'scalePxPerMm',
+          'layout', 'isSplitContent', 'contentKey', 'splitContentA', 'splitContentB',
+          'splitDirection', 'splitRatioMode', 'showCutout', 'useUdcForIphoneDuo',
+          'showDimLines', 'dimUnit', 'cleanShowcase', 'singleFoldId', 'vsBarId', 'vsFoldId'
+        ];
+        simpleKeys.forEach(k => {
+          if (parsed[k] !== undefined) state[k] = parsed[k];
+        });
+
+        if (Array.isArray(parsed.multiFoldIds) && parsed.multiFoldIds.length > 0) {
+          state.multiFoldIds = parsed.multiFoldIds;
+        }
+        if (Array.isArray(parsed.multiAllIds) && parsed.multiAllIds.length > 0) {
+          state.multiAllIds = parsed.multiAllIds;
+        }
+        if (parsed.deviceStates && typeof parsed.deviceStates === 'object') {
+          DEVICES.forEach(d => {
+            if (parsed.deviceStates[d.id]) {
+              state.deviceStates[d.id] = {
+                isOpen: Boolean(parsed.deviceStates[d.id].isOpen),
+                rotation: [0, 90, 180, 270].includes(parsed.deviceStates[d.id].rotation)
+                  ? parsed.deviceStates[d.id].rotation
+                  : 0
+              };
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('localStorageからの復元に失敗しました:', err);
+      }
+    }
+
+    function syncControlsWithState() {
+      // テーマの同期
+      document.body.setAttribute('data-theme', state.theme);
+      const isLight = state.theme === 'light';
+      document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
+      document.getElementById('themeLabel').textContent = isLight ? 'ライトモード' : 'ダークモード';
+      document.getElementById('exportBgTheme').value = state.theme;
+
+      // チェックボックス＆セレクトボックスの同期
+      document.getElementById('autoFitScaleToggle').checked = state.autoFitScale;
+      document.getElementById('scaleSlider').value = state.scalePxPerMm;
+      document.getElementById('scaleValue').textContent = `${state.scalePxPerMm.toFixed(2)} px/mm`;
+
+      document.getElementById('contentSelect').value = state.contentKey;
+      document.getElementById('contentDesc').textContent = CONTENT_PRESETS[state.contentKey]?.desc || '';
+      document.getElementById('splitContentA').value = state.splitContentA;
+      document.getElementById('splitContentB').value = state.splitContentB;
+      document.getElementById('splitDirection').value = state.splitDirection;
+      document.getElementById('splitRatioMode').value = state.splitRatioMode;
+
+      const btnSingleContent = document.getElementById('btnModeSingleContent');
+      const btnSplitContent = document.getElementById('btnModeSplitContent');
+      const singleControls = document.getElementById('singleContentControls');
+      const splitControls = document.getElementById('splitContentControls');
+
+      if (state.isSplitContent) {
+        btnSplitContent.className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold transition';
+        btnSingleContent.className = 'px-2 py-0.5 rounded font-bold transition';
+        singleControls.classList.add('hidden');
+        splitControls.classList.remove('hidden');
+      } else {
+        btnSingleContent.className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold transition';
+        btnSplitContent.className = 'px-2 py-0.5 rounded font-bold transition';
+        singleControls.classList.remove('hidden');
+        splitControls.classList.add('hidden');
+      }
+
+      document.getElementById('toggleDimLines').checked = state.showDimLines;
+      document.getElementById('dimUnitSelect').value = state.dimUnit;
+      document.getElementById('toggleCleanShowcase').checked = state.cleanShowcase;
+      document.getElementById('toggleCutoutVis').checked = state.showCutout;
+      document.getElementById('toggleIphoneDuoUdc').checked = state.useUdcForIphoneDuo;
+
+      document.querySelectorAll('#layoutBtns button').forEach(b => {
+        const isSelected = b.dataset.layout === state.layout;
+        b.className = isSelected
+          ? 'flex-1 py-1 px-1.5 rounded bg-indigo-600 text-[11px] font-medium text-white text-center'
+          : 'flex-1 py-1 px-1.5 rounded theme-input border text-[11px] text-center';
+      });
+    }
 
     /********************************************************************
      * 3. 寸法フォーマット関数（cm / mm）
@@ -757,6 +872,8 @@
       document.getElementById('canvasScaleInfo').textContent =
         `Fold Scale 描画倍率: ${state.scalePxPerMm.toFixed(2)} px/mm`;
 
+      saveStateToStorage();
+
       if (triggerRender) {
         renderAll();
       }
@@ -779,7 +896,7 @@
 
     function computeLayoutRectsForScreen(screenW, screenH) {
       if (!state.isSplitContent) {
-        const preset = CONTENT_PRESETS[state.contentKey];
+        const preset = CONTENT_PRESETS[state.contentKey] || CONTENT_PRESETS.video_16_9;
         const fit = fitBoxWithin(screenW, screenH, preset.aspect);
         const cx = (screenW - fit.w) / 2;
         const cy = (screenH - fit.h) / 2;
@@ -803,14 +920,12 @@
         };
       }
 
-      // 2画面分割モード（ペインA ＋ ペインB）
-      const presetA = CONTENT_PRESETS[state.splitContentA];
-      const presetB = CONTENT_PRESETS[state.splitContentB];
-      const dividerMm = 1.4; // 分割バーの厚み(mm)
+      const presetA = CONTENT_PRESETS[state.splitContentA] || CONTENT_PRESETS.video_16_9;
+      const presetB = CONTENT_PRESETS[state.splitContentB] || CONTENT_PRESETS.fullscreen;
+      const dividerMm = 1.4;
 
       let dir = state.splitDirection;
       if (dir === 'auto') {
-        // 横幅の方が広ければ左右分割、縦の方が長ければ上下分割
         dir = screenW >= screenH ? 'horizontal' : 'vertical';
       }
 
@@ -831,7 +946,6 @@
         paneBContH = screenH;
         paneBContX = paneAContW + dividerMm;
       } else {
-        // 上下分割 (vertical)
         const usableH = Math.max(10, screenH - dividerMm);
         let ratioA = 0.5;
         if (state.splitRatioMode === '70_30') ratioA = 0.7;
@@ -858,7 +972,7 @@
         w: fitA.w, h: fitA.h,
         areaCm2: (fitA.w * fitA.h) / 100,
         effInch: Math.hypot(fitA.w, fitA.h) / 25.4,
-        colorHex: '#6366f1' // Indigo
+        colorHex: '#6366f1'
       };
 
       const rectB = {
@@ -870,11 +984,10 @@
         w: fitB.w, h: fitB.h,
         areaCm2: (fitB.w * fitB.h) / 100,
         effInch: Math.hypot(fitB.w, fitB.h) / 25.4,
-        colorHex: '#ec4899' // Pink
+        colorHex: '#ec4899'
       };
 
       const totalArea = rectA.areaCm2 + rectB.areaCm2;
-      // 合成実効インチ（合計面積と画面比率から算出する相当インチ数）
       const combinedEffInch = Math.hypot(
         Math.sqrt(totalArea * 100 * (screenW / screenH)),
         Math.sqrt(totalArea * 100 * (screenH / screenW))
@@ -974,7 +1087,6 @@
       const screenH = isSwapped ? baseScreenW : baseScreenH;
       const screenAreaCm2 = (screenW * screenH) / 100;
 
-      // 単一または2画面分割のレイアウト矩形を計算
       const layoutInfo = computeLayoutRectsForScreen(screenW, screenH);
       const contentAreaCm2 = layoutInfo.totalContentAreaCm2;
       const effectiveInch = layoutInfo.effectiveInch;
@@ -999,7 +1111,6 @@
         baseScreenW, baseScreenH, layoutInfo.panes, cutoutSpec, effectiveCutoutType, rotation
       );
 
-      // 他の回転角で黒帯に隠せるか探索
       let suggestedAngle = null;
       if (interference.status === 'intruding' || interference.status === 'udc_overlap') {
         for (const candRot of [0, 90, 180, 270]) {
@@ -1052,7 +1163,7 @@
     }
 
     /********************************************************************
-     * 6. UIレンダリング関数群
+     * 6. UIレンダリング関数群（端末底辺の完全ベースライン揃え対応）
      ********************************************************************/
     function renderModeTabs() {
       const container = document.getElementById('modeTabs');
@@ -1231,7 +1342,7 @@
       const label = formatDimension(heightMm);
       const arrowH = Math.max(44, Math.min(heightPx * 0.65, 130));
       return `
-        <div class="flex flex-col items-center justify-end select-none ${placeRight ? 'ml-2' : 'mr-2'}" style="height:${heightPx}px;">
+        <div class="flex flex-col items-center justify-end select-none ${placeRight ? 'ml-2' : 'mr-2'} shrink-0" style="height:${heightPx}px;">
           <div class="flex items-center gap-1 pb-1">
             ${placeRight ? `
               <div class="flex flex-col items-center theme-arrow-head" style="height:${arrowH}px;">
@@ -1239,9 +1350,9 @@
                 <div class="flex-1 w-[1.5px] theme-arrow-bar"></div>
                 <span class="text-[10px] leading-none">▼</span>
               </div>
-              <span class="vertical-dim-text font-mono font-bold text-xs md:text-sm theme-dim-label tracking-tight">${label}</span>
+              <span class="vertical-dim-text font-mono font-bold text-xs md:text-sm theme-dim-label tracking-tight whitespace-nowrap">${label}</span>
             ` : `
-              <span class="vertical-dim-text font-mono font-bold text-xs md:text-sm theme-dim-label tracking-tight">${label}</span>
+              <span class="vertical-dim-text font-mono font-bold text-xs md:text-sm theme-dim-label tracking-tight whitespace-nowrap">${label}</span>
               <div class="flex flex-col items-center theme-arrow-head" style="height:${arrowH}px;">
                 <span class="text-[10px] leading-none">▲</span>
                 <div class="flex-1 w-[1.5px] theme-arrow-bar"></div>
@@ -1253,25 +1364,30 @@
       `;
     }
 
+    /**
+     * 横幅寸法＆機種名ラベル（固定高さ h-[62px] + whitespace-nowrap により2行折り返しによる底辺ズレを完全防止）
+     */
     function buildHorizontalDimHTML(widthMm, widthPx, deviceName) {
       if (!state.showDimLines) {
         return `
-          <div class="mt-2 text-center">
-            <div class="font-extrabold text-sm md:text-base theme-text-main">${deviceName}</div>
+          <div class="mt-2 h-[30px] flex flex-col items-center justify-start select-none shrink-0">
+            <div class="font-extrabold text-sm md:text-base theme-text-main whitespace-nowrap leading-tight">${deviceName}</div>
           </div>
         `;
       }
       const label = formatDimension(widthMm);
-      const arrowW = Math.max(50, Math.min(widthPx * 0.55, 140));
+      const arrowW = Math.max(46, Math.min(widthPx * 0.65, 150));
       return `
-        <div class="mt-2 flex flex-col items-center select-none" style="width:${widthPx}px;">
+        <div class="mt-2 h-[62px] flex flex-col items-center justify-start select-none shrink-0">
+          <!-- 矢印自体は端末の横幅内に合わせて描画 -->
           <div class="flex items-center justify-center theme-arrow-head" style="width:${arrowW}px;">
             <span class="text-[10px] leading-none">◀</span>
             <div class="flex-1 h-[1.5px] theme-arrow-bar mx-0.5"></div>
             <span class="text-[10px] leading-none">▶</span>
           </div>
-          <div class="font-mono font-bold text-xs md:text-sm theme-dim-label mt-0.5">${label}</div>
-          <div class="font-extrabold text-sm md:text-base theme-text-main tracking-tight mt-0.5">${deviceName}</div>
+          <!-- 寸法テキストと端末名は狭いスマホ幅でも折り返さないよう whitespace-nowrap で1行固定 -->
+          <div class="font-mono font-bold text-xs md:text-sm theme-dim-label mt-0.5 whitespace-nowrap leading-tight">${label}</div>
+          <div class="font-extrabold text-sm md:text-base theme-text-main tracking-tight mt-0.5 whitespace-nowrap leading-tight px-1">${deviceName}</div>
         </div>
       `;
     }
@@ -1310,9 +1426,9 @@
                style="left:${leftPx}px; top:${topPx}px; width:${wPx}px; height:${hPx}px; background: linear-gradient(135deg, ${boxColor}44, ${boxColor}88); border: 1.5px solid ${boxColor};">
             ${mangaGuideHTML}
             <div class="z-10 px-1.5 py-0.5 rounded bg-slate-950/75 backdrop-blur-sm">
-              ${m.layoutInfo.isSplit ? `<div class="text-[9px] font-bold text-indigo-200">${p.label}</div>` : ''}
-              <div class="text-[11px] font-extrabold text-white leading-tight">${p.effInch.toFixed(2)}"</div>
-              <div class="text-[9px] font-mono text-slate-200">${p.areaCm2.toFixed(1)} cm²</div>
+              ${m.layoutInfo.isSplit ? `<div class="text-[9px] font-bold text-indigo-200 whitespace-nowrap">${p.label}</div>` : ''}
+              <div class="text-[11px] font-extrabold text-white leading-tight whitespace-nowrap">${p.effInch.toFixed(2)}"</div>
+              <div class="text-[9px] font-mono text-slate-200 whitespace-nowrap">${p.areaCm2.toFixed(1)} cm²</div>
             </div>
           </div>
         `;
@@ -1358,27 +1474,17 @@
         }
       }
 
-      // 回転サジェストボタン
-      let suggestionHTML = '';
-      if (m.suggestedAngle !== null && !state.cleanShowcase) {
-        suggestionHTML = `
-          <button data-device-id="${device.id}" data-set-rot="${m.suggestedAngle}"
-                  class="mt-2 w-full py-1 px-2 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-500 text-[11px] font-bold transition flex items-center justify-center gap-1">
-            <span>💡 ${m.suggestedAngle}° に回すと黒帯に隠れて干渉ゼロ</span>
-          </button>
-        `;
-      }
-
       const placeVertRight = (totalCount === 2 && idx === 1);
       const panesHTML = buildPanesInsideScreenHTML(device, m, scale);
 
       const deviceCoreWithDimsHTML = `
         <div class="flex flex-col items-center">
-          <div class="flex items-end">
+          <!-- 本体＋側面縦寸法（items-endで底辺を一致させる） -->
+          <div class="flex items-end justify-center">
             ${!placeVertRight ? buildVerticalDimHTML(m.bodyH, bodyHpx, false) : ''}
 
             <!-- 本体外枠 (Chassis) -->
-            <div class="device-transition relative rounded-[14px] bg-slate-800 border-[2.5px] shadow-xl flex items-center justify-center"
+            <div class="device-transition relative rounded-[14px] bg-slate-800 border-[2.5px] shadow-xl flex items-center justify-center shrink-0"
                  style="width:${bodyWpx}px; height:${bodyHpx}px; border-color:${isCleanWallpaper ? '#475569' : device.color};">
 
               <!-- ディスプレイ領域 -->
@@ -1393,22 +1499,25 @@
             ${placeVertRight ? buildVerticalDimHTML(m.bodyH, bodyHpx, true) : ''}
           </div>
 
+          <!-- 下部固定高さラベル（2行折り返しによる底辺ズレを防止） -->
           ${buildHorizontalDimHTML(m.bodyW, bodyWpx, device.name)}
         </div>
       `;
 
+      // 「枠なしクリーン展示モード」
       if (state.cleanShowcase) {
         return `
-          <div class="flex flex-col items-center p-2">
-            <div class="mb-3 flex items-center gap-1.5 theme-panel border px-2.5 py-1 rounded-full text-[11px] shadow-sm">
+          <div class="flex flex-col items-center px-2">
+            <!-- ミニ操作ピル（高さ固定 h-[30px]） -->
+            <div class="mb-3 h-[30px] flex items-center gap-1.5 theme-panel border px-2.5 rounded-full text-[11px] shadow-sm shrink-0">
               ${device.category === 'foldable' ? `
-                <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded-full font-medium ${
+                <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded-full font-medium leading-none ${
                   m.activeOpen ? 'bg-indigo-600 text-white' : 'theme-input'
                 }">${m.activeOpen ? '開' : '閉'}</button>
               ` : ''}
               ${[0, 90, 180, 270].map(rot => `
                 <button data-device-id="${device.id}" data-set-rot="${rot}"
-                        class="px-1.5 py-0.5 rounded-full font-mono text-[10px] ${
+                        class="px-1.5 py-0.5 rounded-full font-mono text-[10px] leading-none ${
                           m.rotation === rot ? 'bg-indigo-600 text-white font-bold' : 'theme-text-sub'
                         }">${rot}°</button>
               `).join('')}
@@ -1418,29 +1527,43 @@
         `;
       }
 
+      // 通常カードモード（サジェスト領域も固定高さ h-[28px] を確保し、カード間の本体底辺ズレを完全防止）
       const splitSummaryText = m.layoutInfo.isSplit
         ? `A:${m.layoutInfo.panes[0].effInch.toFixed(1)}" + B:${m.layoutInfo.panes[1].effInch.toFixed(1)}"`
         : `実効 ${m.effectiveInch.toFixed(2)}"`;
 
+      const fixedFooterActionHTML = m.suggestedAngle !== null
+        ? `
+          <button data-device-id="${device.id}" data-set-rot="${m.suggestedAngle}"
+                  class="w-full h-[26px] px-2 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-500 text-[10px] font-bold transition flex items-center justify-center gap-1 whitespace-nowrap">
+            <span>💡 ${m.suggestedAngle}° に回すと黒帯に隠れて干渉ゼロ</span>
+          </button>
+        `
+        : `
+          <div class="w-full h-[26px] px-2 rounded theme-subpanel border flex items-center justify-center text-[10px] theme-text-sub whitespace-nowrap">
+            <span>✓ 現在の向きで最適表示中</span>
+          </div>
+        `;
+
       return `
         <div class="flex flex-col items-center theme-card border rounded-2xl p-4 shadow-md min-w-[235px]">
 
-          <div class="w-full flex items-center justify-between gap-2 mb-2">
+          <div class="w-full flex items-center justify-between gap-2 mb-2 h-[22px] shrink-0">
             <div class="flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${device.color}"></span>
-              <span class="font-bold text-xs md:text-sm theme-text-main">${device.name}</span>
+              <span class="font-bold text-xs md:text-sm theme-text-main whitespace-nowrap">${device.name}</span>
             </div>
             <span class="text-[11px] font-mono theme-text-sub">${device.weightG}g</span>
           </div>
 
-          <div class="w-full flex flex-wrap items-center justify-between gap-1 mb-3 pb-2 border-b border-slate-500/20 text-[11px]">
+          <div class="w-full flex items-center justify-between gap-1 mb-3 pb-2 border-b border-slate-500/20 text-[11px] h-[34px] shrink-0">
             ${device.category === 'foldable' ? `
-              <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded font-medium transition ${
+              <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded font-medium transition whitespace-nowrap ${
                 m.activeOpen ? 'bg-indigo-600 text-white' : 'theme-input border'
               }">
                 ${m.activeOpen ? '展開中 (開)' : '折りたたみ (閉)'}
               </button>
-            ` : `<span class="px-2 py-0.5 rounded theme-input text-[10px]">通常バー型</span>`}
+            ` : `<span class="px-2 py-0.5 rounded theme-input text-[10px] whitespace-nowrap">通常バー型</span>`}
 
             <div class="flex items-center gap-0.5">
               ${[0, 90, 180, 270].map(rot => `
@@ -1454,11 +1577,13 @@
             </div>
           </div>
 
-          <div class="my-1 flex items-center justify-center">
+          <!-- 本体描画コア -->
+          <div class="my-1 flex items-end justify-center">
             ${deviceCoreWithDimsHTML}
           </div>
 
-          <div class="w-full mt-3 pt-2.5 border-t border-slate-500/20 space-y-1 text-[11px]">
+          <!-- 下部スペックフッター（全カード共通の固定高さ構造） -->
+          <div class="w-full mt-3 pt-2.5 border-t border-slate-500/20 space-y-1.5 text-[11px] shrink-0">
             <div class="flex items-center justify-between theme-text-sub">
               <span>表示: <strong class="font-mono theme-text-main">${splitSummaryText}</strong></span>
               <span>厚: <strong class="font-mono text-indigo-400">${m.bodyD}mm</strong></span>
@@ -1466,11 +1591,13 @@
             <div class="w-full bg-slate-500/20 h-2 rounded-full overflow-hidden p-0.5 flex items-center">
               <div class="h-full rounded-full transition-all" style="width:${Math.min(100, (m.bodyD / 14) * 100)}%; background:${device.color}"></div>
             </div>
-            <div class="flex items-center justify-between pt-1">
+            <div class="flex items-center justify-between pt-0.5">
               <span class="theme-text-sub">黒帯率: <strong class="theme-text-main font-mono">${m.blackBarRatioPercent.toFixed(1)}%</strong></span>
-              <span class="px-1.5 py-0.5 rounded border text-[10px] font-semibold ${cBadge.badgeCls}">${cBadge.label}</span>
+              <span class="px-1.5 py-0.5 rounded border text-[10px] font-semibold whitespace-nowrap ${cBadge.badgeCls}">${cBadge.label}</span>
             </div>
-            ${suggestionHTML}
+            <div class="pt-1">
+              ${fixedFooterActionHTML}
+            </div>
           </div>
 
         </div>
@@ -1499,7 +1626,7 @@
         return `
           <div class="device-transition absolute rounded-[14px] border-2 flex items-start justify-start p-2 transition-all"
                style="width:${wPx}px; height:${hPx}px; ${posStyle} border-color:${device.color}; background-color:${device.color}22; z-index:${10 + idx};">
-            <span class="px-2 py-0.5 rounded text-[11px] font-bold text-white shadow" style="background:${device.color}">
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold text-white shadow whitespace-nowrap" style="background:${device.color}">
               ${device.name} (${formatDimension(m.bodyW)} × ${formatDimension(m.bodyH)})
             </span>
           </div>
@@ -1509,7 +1636,7 @@
       const controlsHTML = activeListWithMetrics.map(({ device, metrics: m }) => `
         <div class="flex items-center gap-2 theme-panel border px-3 py-1.5 rounded-xl text-xs">
           <span class="w-2.5 h-2.5 rounded-full" style="background:${device.color}"></span>
-          <span class="font-bold theme-text-main">${device.name}</span>
+          <span class="font-bold theme-text-main whitespace-nowrap">${device.name}</span>
           ${device.category === 'foldable' ? `
             <button data-toggle-open="${device.id}" class="px-2 py-0.5 rounded theme-input border text-indigo-400 font-semibold">
               ${m.activeOpen ? '開' : '閉'}
@@ -1577,11 +1704,11 @@
       const badge = document.getElementById('chartContentBadge');
 
       if (state.isSplitContent) {
-        const pA = CONTENT_PRESETS[state.splitContentA].shortLabel;
-        const pB = CONTENT_PRESETS[state.splitContentB].shortLabel;
+        const pA = CONTENT_PRESETS[state.splitContentA]?.shortLabel || 'A';
+        const pB = CONTENT_PRESETS[state.splitContentB]?.shortLabel || 'B';
         badge.textContent = `2画面分割 (${pA} + ${pB})`;
       } else {
-        badge.textContent = CONTENT_PRESETS[state.contentKey].label;
+        badge.textContent = CONTENT_PRESETS[state.contentKey]?.label || '16:9 動画';
       }
 
       const maxAreaRef = 215;
@@ -1681,10 +1808,11 @@
 
       renderCanvas(activeListWithMetrics);
       renderAreaChartAndTable(activeListWithMetrics);
+      saveStateToStorage();
     }
 
     /********************************************************************
-     * 7. 最適化PNG画像エクスポーター（2画面分割・ライト/ダーク対応）
+     * 7. 最適化PNG画像エクスポーター（全端末ベースライン統一・高解像度出力）
      ********************************************************************/
     function exportOptimizedComparisonImage() {
       const activeDevices = getActiveDevices();
@@ -1695,23 +1823,23 @@
       });
       if (items.length === 0) return;
 
-      const theme = document.getElementById('exportBgTheme').value; // 'light' | 'dark'
+      const theme = document.getElementById('exportBgTheme').value;
       const isLight = theme === 'light';
       const isCleanWallpaper = !state.isSplitContent && state.contentKey === 'wallpaper_clean';
 
       const pxPerMm = 4.2;
-      const sideDimSpace = state.showDimLines ? 72 : 20;
+      const sideDimSpace = state.showDimLines ? 76 : 24;
       const bottomLabelSpace = state.showDimLines ? 115 : 75;
       const topHeaderSpace = 72;
-      const gapBetweenDevices = 64;
-      const outerPadX = 60;
+      const gapBetweenDevices = 72;
+      const outerPadX = 64;
 
       let totalWidthPx = outerPadX * 2;
       let maxDeviceHeightPx = 0;
 
       if (state.layout === 'side') {
-        items.forEach(({ metrics: m }, idx) => {
-          const wPx = m.bodyW * pxPerMm;
+        items.forEach(({ device, metrics: m }, idx) => {
+          const wPx = Math.max(m.bodyW * pxPerMm, device.name.length * 14);
           const hPx = m.bodyH * pxPerMm;
           totalWidthPx += wPx + sideDimSpace;
           if (idx < items.length - 1) totalWidthPx += gapBetweenDevices;
@@ -1733,7 +1861,6 @@
       ctx.fillStyle = isLight ? '#ffffff' : '#0b1120';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Fold Scale ヘッダータイトル
       ctx.fillStyle = isLight ? '#334155' : '#94a3b8';
       ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
       ctx.textAlign = 'left';
@@ -1742,6 +1869,7 @@
         : CONTENT_PRESETS[state.contentKey].label;
       ctx.fillText(`Fold Scale ｜ ${modeTitle}`, 32, 40);
 
+      // 全端末共通の底辺Y座標（ベースライン）
       const baselineY = topHeaderSpace + maxDeviceHeightPx;
 
       if (state.layout === 'side') {
@@ -1752,9 +1880,10 @@
           const bodyHpx = m.bodyH * pxPerMm;
           const screenWpx = m.screenW * pxPerMm;
           const screenHpx = m.screenH * pxPerMm;
+          const slotW = Math.max(bodyWpx, device.name.length * 14);
 
           const placeVertRight = (items.length === 2 && idx === 1);
-          const phoneX = placeVertRight ? cursorX : cursorX + sideDimSpace;
+          const phoneX = (placeVertRight ? cursorX : cursorX + sideDimSpace) + (slotW - bodyWpx) / 2;
           const phoneY = baselineY - bodyHpx;
 
           // 本体外枠
@@ -1765,7 +1894,7 @@
           const screenY = phoneY + (bodyHpx - screenHpx) / 2;
           drawRoundedRect(ctx, screenX, screenY, screenWpx, screenHpx, 16, '#020617', '#1e293b', 1);
 
-          // 各ペイン（単一または2画面分割A/B）の描画
+          // 各ペイン描画
           m.layoutInfo.panes.forEach(p => {
             const pX = screenX + p.x * pxPerMm;
             const pY = screenY + p.y * pxPerMm;
@@ -1862,24 +1991,24 @@
             drawRoundedRect(ctx, holeX, holeY, holeW, holeH, Math.min(holeW, holeH) / 2, holeFill, holeStroke, 2.5);
           }
 
-          // 縦横寸法矢印とラベル
+          // 縦横寸法矢印と1行機種名ラベル
           const textColor = isLight ? '#0f172a' : '#f8fafc';
           const dimColor = isLight ? '#0f172a' : '#34d399';
           const arrowColor = isLight ? '#475569' : '#94a3b8';
 
           if (state.showDimLines) {
-            const hArrowW = Math.min(bodyWpx * 0.5, 180);
+            const hArrowW = Math.min(bodyWpx * 0.6, 180);
             const hArrowX1 = phoneX + (bodyWpx - hArrowW) / 2;
             const hArrowX2 = hArrowX1 + hArrowW;
             const hArrowY = baselineY + 18;
             drawDoubleArrow(ctx, hArrowX1, hArrowY, hArrowX2, hArrowY, arrowColor);
 
             ctx.fillStyle = dimColor;
-            ctx.font = 'bold 21px -apple-system, BlinkMacSystemFont, monospace';
+            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, monospace';
             ctx.textAlign = 'center';
             ctx.fillText(formatDimension(m.bodyW), phoneX + bodyWpx / 2, baselineY + 44);
 
-            const vArrowH = Math.min(bodyHpx * 0.42, 180);
+            const vArrowH = Math.min(bodyHpx * 0.45, 180);
             const vArrowY2 = baselineY - 8;
             const vArrowY1 = vArrowY2 - vArrowH;
             const vArrowX = placeVertRight ? (phoneX + bodyWpx + 18) : (phoneX - 18);
@@ -1891,7 +2020,7 @@
             ctx.translate(textX, textY);
             ctx.rotate(placeVertRight ? Math.PI / 2 : -Math.PI / 2);
             ctx.fillStyle = dimColor;
-            ctx.font = 'bold 21px -apple-system, BlinkMacSystemFont, monospace';
+            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(formatDimension(m.bodyH), 0, 0);
@@ -1899,12 +2028,12 @@
           }
 
           ctx.fillStyle = textColor;
-          ctx.font = '900 26px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
           ctx.textAlign = 'center';
-          const nameY = state.showDimLines ? (baselineY + 78) : (baselineY + 38);
+          const nameY = state.showDimLines ? (baselineY + 76) : (baselineY + 38);
           ctx.fillText(device.name, phoneX + bodyWpx / 2, nameY);
 
-          cursorX += bodyWpx + sideDimSpace + gapBetweenDevices;
+          cursorX += slotW + sideDimSpace + gapBetweenDevices;
         });
       } else {
         const sorted = [...items].sort((a, b) => (b.metrics.bodyW * b.metrics.bodyH) - (a.metrics.bodyW * a.metrics.bodyH));
@@ -1974,42 +2103,36 @@
     }
 
     /********************************************************************
-     * 8. イベントリスナー設定（テーマ切替・2画面分割・スケール等）
+     * 8. イベントリスナー設定 ＆ 起動時の状態復元
      ********************************************************************/
     window.addEventListener('resize', () => updateViewportAndScale(true));
 
     // ダーク / ライト テーマ切替
     document.getElementById('btnThemeToggle').addEventListener('click', () => {
       state.theme = state.theme === 'dark' ? 'light' : 'dark';
-      document.body.setAttribute('data-theme', state.theme);
-      const isLight = state.theme === 'light';
-      document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
-      document.getElementById('themeLabel').textContent = isLight ? 'ライトモード' : 'ダークモード';
-      document.getElementById('exportBgTheme').value = state.theme;
+      syncControlsWithState();
       renderAll();
+    });
+
+    // 保存状態リセットボタン
+    document.getElementById('btnResetStorage').addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      const fresh = createDefaultState();
+      Object.assign(state, fresh);
+      syncControlsWithState();
+      updateViewportAndScale(true);
     });
 
     // 単一表示 vs 2画面分割モード切替
-    const btnSingleContent = document.getElementById('btnModeSingleContent');
-    const btnSplitContent = document.getElementById('btnModeSplitContent');
-    const singleControls = document.getElementById('singleContentControls');
-    const splitControls = document.getElementById('splitContentControls');
-
-    btnSingleContent.addEventListener('click', () => {
+    document.getElementById('btnModeSingleContent').addEventListener('click', () => {
       state.isSplitContent = false;
-      btnSingleContent.className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold transition';
-      btnSplitContent.className = 'px-2 py-0.5 rounded font-bold transition';
-      singleControls.classList.remove('hidden');
-      splitControls.classList.add('hidden');
+      syncControlsWithState();
       renderAll();
     });
 
-    btnSplitContent.addEventListener('click', () => {
+    document.getElementById('btnModeSplitContent').addEventListener('click', () => {
       state.isSplitContent = true;
-      btnSplitContent.className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold transition';
-      btnSingleContent.className = 'px-2 py-0.5 rounded font-bold transition';
-      singleControls.classList.add('hidden');
-      splitControls.classList.remove('hidden');
+      syncControlsWithState();
       renderAll();
     });
 
@@ -2084,12 +2207,7 @@
     document.querySelectorAll('#layoutBtns button').forEach(btn => {
       btn.addEventListener('click', () => {
         state.layout = btn.dataset.layout;
-        document.querySelectorAll('#layoutBtns button').forEach(b => {
-          const isSelected = b.dataset.layout === state.layout;
-          b.className = isSelected
-            ? 'flex-1 py-1 px-1.5 rounded bg-indigo-600 text-[11px] font-medium text-white text-center'
-            : 'flex-1 py-1 px-1.5 rounded theme-input border text-[11px] text-center';
-        });
+        syncControlsWithState();
         updateViewportAndScale(true);
       });
     });
@@ -2108,7 +2226,9 @@
       exportOptimizedComparisonImage();
     });
 
-    // 初回描画
+    // 起動時に localStorage から状態を復元し、UIコントロールと同期して初回描画
+    loadStateFromStorage();
+    syncControlsWithState();
     updateViewportAndScale(true);
   </script>
 </body>
